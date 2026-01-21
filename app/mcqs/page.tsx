@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { MCQ, Lesson } from '@/types/database';
 
 export default function MCQsPage() {
-  const [mcqs, setMcqs] = useState([]);
-  const [lessons, setLessons] = useState([]);
+  const [mcqs, setMcqs] = useState<MCQ[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [show, setShow] = useState(false);
-  const [edit, setEdit] = useState(null);
+  const [edit, setEdit] = useState<MCQ | null>(null);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Partial<MCQ>>({
     langid: 1,
     lessonid: [],
     question: '',
@@ -40,8 +41,9 @@ export default function MCQsPage() {
     if (d.success) setLessons(d.data);
   }
 
-  async function submit(e) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
     const method = edit ? 'PUT' : 'POST';
     const body = edit ? { ...form, mcqid: edit.mcqid } : form;
 
@@ -50,6 +52,7 @@ export default function MCQsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
+
     const d = await r.json();
     if (d.success) {
       close();
@@ -76,7 +79,7 @@ export default function MCQsPage() {
     });
   }
 
-  async function del(id) {
+  async function del(id: number) {
     if (!confirm('Delete?')) return;
     await fetch(`/api/mcqs?mcqid=${id}&euserid=1`, { method: 'DELETE' });
     load();
@@ -110,18 +113,24 @@ export default function MCQsPage() {
             <tbody>
               {mcqs.length === 0 ? (
                 <tr><td colSpan={5} className="text-center py-8 text-gray-500">No MCQs found.</td></tr>
-              ) : mcqs.map(m => (
+              ) : mcqs.map((m) => (
                 <tr key={m.mcqid}>
                   <td>{m.mcqid}</td>
-                  <td className="font-semibold text-primary-600">{m.question.slice(0,40)}...</td>
+                  <td className="font-semibold text-primary-600">
+                    {m.question?.slice(0, 40)}...
+                  </td>
                   <td>{m.answer}</td>
-                  <td>{m.lessons?.map(l => l.lesson).join(', ')}</td>
+                  <td>{(m as any).lessons?.map((l: any) => l.lesson).join(', ')}</td>
                   <td>
                     <div className="flex gap-2">
                       <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                        onClick={() => (setEdit(m), setShow(true))}>Edit</button>
+                        onClick={() => (setEdit(m), setShow(true))}>
+                        Edit
+                      </button>
                       <button className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
-                        onClick={() => del(m.mcqid)}>Delete</button>
+                        onClick={() => del(m.mcqid!)}>
+                        Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -141,13 +150,15 @@ export default function MCQsPage() {
               <div>
                 <label className="form-label">Lessons *</label>
                 <select multiple required className="form-input h-32"
-                  value={form.lessonid}
-                  onChange={e => setForm({
-                    ...form,
-                    lessonid: Array.from(e.target.selectedOptions).map(o => parseInt(o.value))
-                  })}
+                  value={form.lessonid as number[]}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      lessonid: Array.from(e.target.selectedOptions).map((o) => parseInt(o.value))
+                    })
+                  }
                 >
-                  {lessons.map(l => (
+                  {lessons.map((l) => (
                     <option key={l.lessonid} value={l.lessonid}>
                       {l.lesson}
                     </option>
@@ -157,38 +168,38 @@ export default function MCQsPage() {
 
               <div>
                 <label className="form-label">Question *</label>
-                <textarea className="form-textarea" required value={form.question}
-                  onChange={e => setForm({ ...form, question: e.target.value })} />
+                <textarea className="form-textarea" required value={form.question || ''}
+                  onChange={(e) => setForm({ ...form, question: e.target.value })} />
               </div>
 
               <div>
                 <label className="form-label">Option 1 *</label>
-                <input className="form-input" required value={form.option1}
-                  onChange={e => setForm({ ...form, option1: e.target.value })}/>
+                <input className="form-input" required value={form.option1 || ''}
+                  onChange={(e) => setForm({ ...form, option1: e.target.value })} />
               </div>
 
               <div>
                 <label className="form-label">Option 2 *</label>
-                <input className="form-input" required value={form.option2}
-                  onChange={e => setForm({ ...form, option2: e.target.value })}/>
+                <input className="form-input" required value={form.option2 || ''}
+                  onChange={(e) => setForm({ ...form, option2: e.target.value })} />
               </div>
 
               <div>
                 <label className="form-label">Option 3</label>
-                <input className="form-input" value={form.option3}
-                  onChange={e => setForm({ ...form, option3: e.target.value })}/>
+                <input className="form-input" value={form.option3 || ''}
+                  onChange={(e) => setForm({ ...form, option3: e.target.value })} />
               </div>
 
               <div>
                 <label className="form-label">Option 4</label>
-                <input className="form-input" value={form.option4}
-                  onChange={e => setForm({ ...form, option4: e.target.value })}/>
+                <input className="form-input" value={form.option4 || ''}
+                  onChange={(e) => setForm({ ...form, option4: e.target.value })} />
               </div>
 
               <div>
                 <label className="form-label">Correct Answer *</label>
-                <select className="form-select" required value={form.answer}
-                  onChange={e => setForm({ ...form, answer: e.target.value })}>
+                <select className="form-select" required value={form.answer || ''}
+                  onChange={(e) => setForm({ ...form, answer: e.target.value as any })}>
                   <option value="">Select</option>
                   <option value="1">Option 1</option>
                   <option value="2">Option 2</option>
@@ -199,20 +210,20 @@ export default function MCQsPage() {
 
               <div>
                 <label className="form-label">Question Document URL</label>
-                <input className="form-input" value={form.quest_doc}
-                  onChange={e => setForm({ ...form, quest_doc: e.target.value })}/>
+                <input className="form-input" value={form.quest_doc || ''}
+                  onChange={(e) => setForm({ ...form, quest_doc: e.target.value })} />
               </div>
 
               <div>
                 <label className="form-label">Answer Document URL</label>
-                <input className="form-input" value={form.answer_doc}
-                  onChange={e => setForm({ ...form, answer_doc: e.target.value })}/>
+                <input className="form-input" value={form.answer_doc || ''}
+                  onChange={(e) => setForm({ ...form, answer_doc: e.target.value })} />
               </div>
 
               <div>
                 <label className="form-label">Explanation</label>
-                <textarea className="form-textarea" value={form.explain}
-                  onChange={e => setForm({ ...form, explain: e.target.value })}/>
+                <textarea className="form-textarea" value={form.explain || ''}
+                  onChange={(e) => setForm({ ...form, explain: e.target.value })} />
               </div>
 
               <div className="flex gap-3 mt-6">
