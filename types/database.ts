@@ -1,4 +1,8 @@
-// Database Types
+// ====================================
+// DATABASE TYPE DEFINITIONS (MATCH SQL)
+// ====================================
+
+// ---- Exam Table ----
 export interface Exam {
   examid?: number;
   langid: number;
@@ -9,8 +13,12 @@ export interface Exam {
   euserid: number;
   edate?: Date;
   del?: boolean;
+
+  // UI JOIN
+  subject_count?: number;
 }
 
+// ---- Subject Table ----
 export interface Subject {
   subjectid?: number;
   langid: number;
@@ -27,8 +35,14 @@ export interface Subject {
   euserid: number;
   edate?: Date;
   del?: boolean;
+
+  // UI JOIN
+  exam_name?: string;
+  unit_count?: number;
+  lesson_count?: number;
 }
 
+// ---- Unit Table ----
 export interface Unit {
   unitid?: number;
   langid: number;
@@ -40,8 +54,13 @@ export interface Unit {
   euserid: number;
   edate?: Date;
   del?: boolean;
+
+  // UI JOIN
+  subject_name?: string;
+  exam_name?: string;
 }
 
+// ---- Lesson Table ----
 export interface Lesson {
   lessonid?: number;
   langid: number;
@@ -49,8 +68,8 @@ export interface Lesson {
   unitid?: number;
   lesson: string;
   content?: string;
-  topicid?: number[];
-  lesson_doc?: string[];
+  topicid?: number[]; // SQL = INTEGER[]
+  lesson_doc?: string[]; 
   lesson_audio?: string[];
   lesson_video?: string[];
   marks_total?: number;
@@ -58,128 +77,151 @@ export interface Lesson {
   edate?: Date;
   del?: boolean;
 
-  // UI Only (JOIN)
+  // UI JOIN
   subject_name?: string;
   unit_name?: string;
   exam_name?: string;
 }
 
-
-
+// ---- Topic Table ----
 export interface Topic {
   topicid?: number;
   langid: number;
   lessonid: number;
   topic: string;
-  content?: string;
-  topic_doc?: string[];
-  topic_audio?: string[];
-  topic_video?: string[];
-  marks_total?: number;
+  explain?: string;
+  topic_doc?: string;   // SQL single URL
+  topic_audio?: string; // SQL single URL
+  topic_video?: string; // SQL single URL
   euserid: number;
   edate?: Date;
   del?: boolean;
+
+  // UI JOIN
+  lesson_name?: string;
+  subject_name?: string;
 }
 
+// ---- Descriptive Question (equest) ----
 export interface Question {
   questid?: number;
   langid: number;
+  lessonid: number[]; // SQL = INTEGER[]
   question: string;
-  answer?: string;
-  lessonid?: number[];
-  quest_doc?: string[];
-  quest_audio?: string[];
-  quest_video?: string[];
-  marks?: number;
+  quest_doc?: string;      // SQL single URL
+  answer: string;
+  answer_doc?: string;     // SQL single URL
+  explain?: string;
   euserid: number;
   edate?: Date;
   del?: boolean;
 }
 
+// ---- MCQ (emcq) ----
 export interface MCQ {
   mcqid?: number;
   langid: number;
+  lessonid: number[];
   question: string;
+  quest_doc?: string;
   option1: string;
   option2: string;
   option3?: string;
   option4?: string;
-  option5?: string;
-  answer: number;
-  lessonid?: number[];
-  mcq_doc?: string[];
-  mcq_audio?: string[];
-  mcq_video?: string[];
-  marks?: number;
+  answer: '1' | '2' | '3' | '4';
+  answer_doc?: string;
+  explain?: string;
   euserid: number;
   edate?: Date;
   del?: boolean;
 }
 
+// ---- Teacher ----
 export interface Teacher {
   teacherid?: number;
   userid: number;
-  examid: number[];
-  subjectid: number[];
-  langid: number[];
+  langid: number[];     // SQL array
+  examid: number;       // SQL single exam
+  subjectid: number;    // SQL single subject
   euserid: number;
   edate?: Date;
   del?: boolean;
 }
 
+// ---- Learner ----
 export interface Learner {
   learnerid?: number;
   userid: number;
+  langid: number;     // SQL required
   examid: number;
   subjectid: number;
   euserid: number;
   edate?: Date;
   del?: boolean;
+
+  // UI JOIN
+  exam_name?: string;
+  subject_name?: string;
 }
 
+// ---- Test Result (eresult) ----
 export interface Result {
   resultid?: number;
   learnerid: number;
-  equestestid: number;
-  marks_total: number;
+  equestestid?: number;
+  marks_total?: number;
+  marks_pass?: number;
   marks_scored?: number;
+  time_total?: number;
+  time_taken?: number;
   completed?: boolean;
   euserid: number;
   edate?: Date;
+
+  // UI JOIN
+  learner_name?: string;
+  exam_name?: string;
+  subject_name?: string;
+  score_percentage?: number;
 }
 
+// ---- Question Test Session (equestest) ----
 export interface QuesTest {
   equestestid?: number;
   learnerid: number;
   mcqid: number[];
+  time_spent?: number;
   euserid: number;
   edate?: Date;
 }
 
+// ---- Individual MCQ Answer (etest) ----
 export interface Test {
   testid?: number;
   resultid: number;
   learnerid: number;
   mcqid: number;
-  opted?: number;
+  opted?: '1' | '2' | '3' | '4';
   euserid: number;
   edate?: Date;
 }
 
-export type TableName = 
-  | 'exam' 
-  | 'esubject' 
-  | 'eunit' 
-  | 'elesson' 
-  | 'etopic' 
-  | 'equest' 
-  | 'emcq' 
-  | 'eteacher' 
-  | 'elearner' 
-  | 'eresult' 
-  | 'equestest' 
+// Table Names (optional utils)
+export type TableName =
+  | 'exam'
+  | 'esubject'
+  | 'eunit'
+  | 'elesson'
+  | 'etopic'
+  | 'equest'
+  | 'emcq'
+  | 'eteacher'
+  | 'elearner'
+  | 'eresult'
+  | 'equestest'
   | 'etest';
 
+// Generic API Response
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
