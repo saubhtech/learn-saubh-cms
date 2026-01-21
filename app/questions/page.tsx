@@ -17,7 +17,7 @@ export default function QuestionsPage() {
     answer: '',
     answer_doc: '',
     explain: '',
-    euserid: 1
+    euserid: 1,
   });
 
   useEffect(() => {
@@ -26,47 +26,41 @@ export default function QuestionsPage() {
   }, []);
 
   const fetchQuestions = async () => {
-    const r = await fetch(`/api/questions`);
+    const r = await fetch('/api/questions');
     const d = await r.json();
     if (d.success) setQuestions(d.data);
   };
 
   const fetchLessons = async () => {
-    const r = await fetch(`/api/lessons`);
+    const r = await fetch('/api/lessons');
     const d = await r.json();
     if (d.success) setLessons(d.data);
   };
 
-  /** FIX #1: type e: React.FormEvent */
-  const submit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const method = editing ? 'PUT' : 'POST';
-
-    const body = editing
-      ? { ...formData, questid: editing.questid }
-      : formData;
+    const body = editing ? { ...formData, questid: editing.questid } : formData;
 
     const r = await fetch(`/api/questions`, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
 
     const d = await r.json();
     if (d.success) {
-      setShowModal(false);
-      setEditing(null);
-      reset();
+      close();
       fetchQuestions();
-    } else alert(d.error);
+    } else {
+      alert(d.error);
+    }
   };
 
-  /** FIX #2: add type for delete */
-  const del = async (id: number) => {
+  const del = async (id: number | undefined) => {
+    if (!id) return;
     if (!confirm('Delete?')) return;
-    const r = await fetch(`/api/questions?questid=${id}&euserid=1`, {
-      method: 'DELETE'
-    });
+    const r = await fetch(`/api/questions?questid=${id}&euserid=1`, { method: 'DELETE' });
     const d = await r.json();
     if (d.success) fetchQuestions();
   };
@@ -80,7 +74,7 @@ export default function QuestionsPage() {
       answer: '',
       answer_doc: '',
       explain: '',
-      euserid: 1
+      euserid: 1,
     });
   };
 
@@ -88,6 +82,12 @@ export default function QuestionsPage() {
     reset();
     setEditing(null);
     setShowModal(true);
+  };
+
+  const close = () => {
+    reset();
+    setEditing(null);
+    setShowModal(false);
   };
 
   return (
@@ -123,18 +123,20 @@ export default function QuestionsPage() {
                 questions.map((q) => (
                   <tr key={q.questid}>
                     <td>{q.questid}</td>
-                    <td className="font-semibold text-primary-600">{q.question?.slice(0,50)}...</td>
-                    <td>{q.lessons?.map(l => l.lesson).join(', ')}</td>
+                    <td className="font-semibold text-primary-600">{q.question?.slice(0, 50)}...</td>
+                    <td>
+                      {q.lessons?.map(l => l.lesson).join(', ') || '—'}
+                    </td>
                     <td>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => (setEditing(q), setShowModal(true))}
+                          onClick={() => { setEditing(q); setFormData(q); setShowModal(true); }}
                           className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => del(q.questid!)}
+                          onClick={() => del(q.questid)}
                           className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
                         >
                           Delete
@@ -153,23 +155,21 @@ export default function QuestionsPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <h2 className="text-2xl font-bold mb-4">
-              {editing ? 'Edit Question' : 'Add New Question'}
-            </h2>
+            <h2 className="text-2xl font-bold mb-4">{editing ? 'Edit Question' : 'Add New Question'}</h2>
 
             <form onSubmit={submit} className="space-y-4">
-              {/* MULTI SELECT — FIX #3: TS requires string[] */}
+              {/* MULTI SELECT LESSON */}
               <div>
                 <label className="form-label">Lessons *</label>
                 <select
                   multiple
                   required
                   className="form-input h-32"
-                  value={(formData.lessonid ?? []).map(String)}
+                  value={formData.lessonid as number[] || []}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value))
+                      lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value)),
                     })
                   }
                 >
@@ -183,61 +183,23 @@ export default function QuestionsPage() {
 
               <div>
                 <label className="form-label">Question *</label>
-                <textarea
-                  className="form-textarea"
-                  required
-                  value={formData.question || ''}
-                  onChange={(e) => setFormData({ ...formData, question: e.target.value })}
-                />
+                <textarea required className="form-textarea" value={formData.question || ''} onChange={(e) => setFormData({ ...formData, question: e.target.value })}/>
               </div>
 
               <div>
                 <label className="form-label">Answer *</label>
-                <textarea
-                  className="form-textarea"
-                  required
-                  value={formData.answer || ''}
-                  onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="form-label">Question Document URL</label>
-                <input
-                  className="form-input"
-                  value={formData.quest_doc || ''}
-                  onChange={(e) => setFormData({ ...formData, quest_doc: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="form-label">Answer Document URL</label>
-                <input
-                  className="form-input"
-                  value={formData.answer_doc || ''}
-                  onChange={(e) => setFormData({ ...formData, answer_doc: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="form-label">Explanation</label>
-                <textarea
-                  className="form-textarea"
-                  value={formData.explain || ''}
-                  onChange={(e) => setFormData({ ...formData, explain: e.target.value })}
-                />
+                <textarea required className="form-textarea" value={formData.answer || ''} onChange={(e) => setFormData({ ...formData, answer: e.target.value })}/>
               </div>
 
               <div className="flex gap-3 mt-6">
                 <button type="submit" className="btn btn-primary flex-1">
                   {editing ? 'Update Question' : 'Create Question'}
                 </button>
-                <button type="button" className="btn btn-secondary flex-1" onClick={() => setShowModal(false)}>
+                <button type="button" className="btn btn-secondary flex-1" onClick={close}>
                   Cancel
                 </button>
               </div>
             </form>
-
           </div>
         </div>
       )}

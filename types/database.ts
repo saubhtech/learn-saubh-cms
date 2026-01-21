@@ -106,15 +106,18 @@ export interface Topic {
 export interface Question {
   questid?: number;
   langid: number;
-  lessonid: number[]; // SQL = INTEGER[]
+  lessonid: number[];
   question: string;
-  quest_doc?: string;      // SQL single URL
+  quest_doc?: string;
   answer: string;
-  answer_doc?: string;     // SQL single URL
+  answer_doc?: string;
   explain?: string;
   euserid: number;
   edate?: Date;
   del?: boolean;
+
+  // UI JOIN
+  lessons?: { lessonid: number; lesson: string }[];
 }
 
 // ---- MCQ (emcq) ----
