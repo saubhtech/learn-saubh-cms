@@ -84,15 +84,16 @@ export interface Lesson {
 }
 
 // ---- Topic Table ----
+// ---- Topic Table ----
 export interface Topic {
   topicid?: number;
   langid: number;
   lessonid: number;
   topic: string;
   explain?: string;
-  topic_doc?: string;   // SQL single URL
-  topic_audio?: string; // SQL single URL
-  topic_video?: string; // SQL single URL
+  topic_doc?: string;
+  topic_audio?: string;
+  topic_video?: string;
   euserid: number;
   edate?: Date;
   del?: boolean;
@@ -100,6 +101,11 @@ export interface Topic {
   // UI JOIN
   lesson_name?: string;
   subject_name?: string;
+  exam_name?: string;
+
+  // 🔥 add these for UI filter
+  subjectid?: number;
+  examid?: number;
 }
 
 // ---- Descriptive Question (equest) ----
