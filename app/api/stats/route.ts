@@ -15,19 +15,15 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        exams: parseInt(exams.rows[0].count),
-        subjects: parseInt(subjects.rows[0].count),
-        lessons: parseInt(lessons.rows[0].count),
-        questions: parseInt(questions.rows[0].count),
-        learners: parseInt(learners.rows[0].count),
-        teachers: parseInt(teachers.rows[0].count),
+        exams: +exams.rows[0].count,
+        subjects: +subjects.rows[0].count,
+        lessons: +lessons.rows[0].count,
+        questions: +questions.rows[0].count,
+        learners: +learners.rows[0].count,
+        teachers: +teachers.rows[0].count,
       },
     });
-  } catch (error: any) {
-    console.error('Stats API error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+  } catch (e: any) {
+    return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
 }

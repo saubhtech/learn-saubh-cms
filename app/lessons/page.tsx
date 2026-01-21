@@ -43,10 +43,10 @@ export default function LessonsPage() {
       const ur = await unitRes.json();
       const er = await examRes.json();
 
-      if (lr.success) setLessons(lr.data);
-      if (sr.success) setSubjects(sr.data);
-      if (ur.success) setUnits(ur.data);
-      if (er.success) setExams(er.data);
+      if (lr.success) setLessons(lr.data ?? []);
+      if (sr.success) setSubjects(sr.data ?? []);
+      if (ur.success) setUnits(ur.data ?? []);
+      if (er.success) setExams(er.data ?? []);
 
     } catch (e) {
       console.error(e);
@@ -139,7 +139,7 @@ export default function LessonsPage() {
           <h1 className="text-3xl font-bold text-gray-800">Lessons Management</h1>
           <p className="text-gray-600 mt-1">Manage lessons with multimedia support (documents, audio, video)</p>
         </div>
-        <button onClick={openAddModal} className="btn btn-primary">+ Add New Lesson</button>
+        <button onClick={openAddModal} className="btn btn-primary">+ Add Lesson</button>
       </div>
 
       <div className="card">
@@ -166,14 +166,26 @@ export default function LessonsPage() {
                   <td>{l.subject_name}</td>
                   <td>{l.unit_name}</td>
                   <td>{l.exam_name}</td>
-                  <td>{l.marks_total || '—'}</td>
+                  <td>{l.marks_total ?? '—'}</td>
                   <td className="flex gap-2">
-                    <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded" onClick={() => {
-                      setEditingLesson(l);
-                      setFormData({ ...l });
-                      setShowModal(true);
-                    }}>Edit</button>
-                    <button className="px-3 py-1 bg-red-100 text-red-700 rounded" onClick={() => handleDelete(l.lessonid)}>Delete</button>
+                    <button
+                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded"
+                      onClick={() => {
+                        setEditingLesson(l);
+                        setFormData({ ...l });
+                        setShowModal(true);
+                      }}
+                    >
+                      Edit
+                    </button>
+                    {l.lessonid && (
+                      <button
+                        className="px-3 py-1 bg-red-100 text-red-700 rounded"
+                        onClick={() => handleDelete(l.lessonid)}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -191,7 +203,12 @@ export default function LessonsPage() {
 
               <div>
                 <label className="form-label">Lesson Name *</label>
-                <input className="form-input" value={formData.lesson || ''} onChange={(e) => setFormData({ ...formData, lesson: e.target.value })} required />
+                <input
+                  className="form-input"
+                  value={formData.lesson || ''}
+                  onChange={(e) => setFormData({ ...formData, lesson: e.target.value })}
+                  required
+                />
               </div>
 
               <div>
@@ -204,7 +221,9 @@ export default function LessonsPage() {
                 >
                   <option value="">Select Subject</option>
                   {subjects.map(s => (
-                    <option key={s.subjectid} value={s.subjectid}>{s.subject}</option>
+                    <option key={s.subjectid} value={s.subjectid}>
+                      {s.subject}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -218,31 +237,62 @@ export default function LessonsPage() {
                 >
                   <option value="">Select Unit</option>
                   {filteredUnits.map(u => (
-                    <option key={u.unitid} value={u.unitid}>{u.unit}</option>
+                    <option key={u.unitid} value={u.unitid}>
+                      {u.unit}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div>
                 <label className="form-label">Content</label>
-                <textarea className="form-textarea" rows={4} value={formData.content || ''} onChange={(e) => setFormData({ ...formData, content: e.target.value })} />
+                <textarea
+                  className="form-textarea"
+                  rows={4}
+                  value={formData.content || ''}
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                />
               </div>
 
               <div>
                 <label className="form-label">Marks Total</label>
-                <input type="number" className="form-input" value={formData.marks_total || ''} onChange={(e) => setFormData({ ...formData, marks_total: parseInt(e.target.value) })} />
+                <input
+                  type="number"
+                  className="form-input"
+                  value={formData.marks_total ?? ''}
+                  onChange={(e) => setFormData({ ...formData, marks_total: parseInt(e.target.value) })}
+                />
               </div>
 
-              {['lesson_doc', 'lesson_audio', 'lesson_video'].map(field => (
+              {['lesson_doc', 'lesson_audio', 'lesson_video'].map((field) => (
                 <div key={field}>
                   <label className="form-label capitalize">{field.replace('_', ' ')}</label>
+
                   {(formData[field as keyof Lesson] as string[] || []).map((v, idx) => (
                     <div key={idx} className="flex gap-2 mb-2">
-                      <input className="form-input" value={v} onChange={(e) => updateArrayField(field as any, idx, e.target.value)} placeholder="https://..." />
-                      <button type="button" className="btn btn-danger" onClick={() => removeArrayField(field as any, idx)}>x</button>
+                      <input
+                        className="form-input"
+                        value={v}
+                        onChange={(e) => updateArrayField(field as any, idx, e.target.value)}
+                        placeholder="https://..."
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={() => removeArrayField(field as any, idx)}
+                      >
+                        x
+                      </button>
                     </div>
                   ))}
-                  <button type="button" className="btn btn-secondary" onClick={() => addToArrayField(field as any)}>+ Add</button>
+
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => addToArrayField(field as any)}
+                  >
+                    + Add
+                  </button>
                 </div>
               ))}
 
@@ -250,7 +300,9 @@ export default function LessonsPage() {
                 <button type="submit" className="btn btn-primary flex-1">
                   {editingLesson ? 'Update Lesson' : 'Create Lesson'}
                 </button>
-                <button type="button" className="btn btn-secondary flex-1" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-secondary flex-1" onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
