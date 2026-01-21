@@ -229,8 +229,21 @@ export default function SubjectsPage() {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="relative bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
+
+      {/* Close / Cross Button */}
+      <button
+        onClick={() => {
+          setShowModal(false);
+          setEditingSubject(null);
+          resetForm();
+        }}
+        className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 text-xl font-bold"
+      >
+        ×
+      </button>
+
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4">
                 {editingSubject ? 'Edit Subject' : 'Add New Subject'}
@@ -269,16 +282,17 @@ export default function SubjectsPage() {
 
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="form-label">Language ID *</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={formData.langid}
-                        onChange={(e) => setFormData({ ...formData, langid: parseInt(e.target.value) })}
-                        required
-                        min="1"
-                      />
-                    </div>
+  <label className="form-label">Language *</label>
+  <input
+    type="text"
+    className="form-input"
+    placeholder="e.g. Hindi, English"
+    value={formData.langid as any ?? ''}
+    onChange={(e) => setFormData({ ...formData, langid: e.target.value as any })}
+    required
+  />
+</div>
+
                     <div>
                       <label className="form-label">Total Marks</label>
                       <input
