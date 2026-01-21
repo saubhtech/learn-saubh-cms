@@ -137,17 +137,25 @@ export default function MCQsPage() {
 
               <div>
                 <label className="form-label">Lessons</label>
-                <select multiple className="form-input h-32"
-                  value={form.lessonid as number[]}
-                  onChange={e => setForm({
-                    ...form,
-                    lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value))
-                  })}
-                >
-                  {lessons.map(l => (
-                    <option key={l.lessonid} value={l.lessonid}>{l.lesson}</option>
-                  ))}
-                </select>
+                <select
+  multiple
+  required
+  className="form-input h-32"
+  value={form.lessonid?.map(String) || []}
+  onChange={e =>
+    setForm({
+      ...form,
+      lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value))
+    })
+  }
+>
+  {lessons.map(l => (
+    <option key={l.lessonid} value={l.lessonid}>
+      {l.lesson}
+    </option>
+  ))}
+</select>
+
               </div>
 
               <div>
