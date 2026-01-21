@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Question, Lesson } from '@/types/database';
 
 export default function QuestionsPage() {
-  const [questions, setQuestions] = useState([]);
-  const [lessons, setLessons] = useState([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [formData, setFormData] = useState({
+  const [editing, setEditing] = useState<Question | null>(null);
+
+  const [formData, setFormData] = useState<Partial<Question>>({
     langid: 1,
     lessonid: [],
     question: '',
@@ -35,10 +37,14 @@ export default function QuestionsPage() {
     if (d.success) setLessons(d.data);
   };
 
-  const submit = async (e) => {
+  /** FIX #1: type e: React.FormEvent */
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const method = editing ? 'PUT' : 'POST';
-    const body = editing ? { ...formData, questid: editing.questid } : formData;
+
+    const body = editing
+      ? { ...formData, questid: editing.questid }
+      : formData;
 
     const r = await fetch(`/api/questions`, {
       method,
@@ -55,9 +61,12 @@ export default function QuestionsPage() {
     } else alert(d.error);
   };
 
-  const del = async (id) => {
+  /** FIX #2: add type for delete */
+  const del = async (id: number) => {
     if (!confirm('Delete?')) return;
-    const r = await fetch(`/api/questions?questid=${id}&euserid=1`, { method: 'DELETE' });
+    const r = await fetch(`/api/questions?questid=${id}&euserid=1`, {
+      method: 'DELETE'
+    });
     const d = await r.json();
     if (d.success) fetchQuestions();
   };
@@ -114,14 +123,22 @@ export default function QuestionsPage() {
                 questions.map((q) => (
                   <tr key={q.questid}>
                     <td>{q.questid}</td>
-                    <td className="font-semibold text-primary-600">{q.question.slice(0,50)}...</td>
-                    <td>
-                      {q.lessons?.map(l => l.lesson).join(', ')}
-                    </td>
+                    <td className="font-semibold text-primary-600">{q.question?.slice(0,50)}...</td>
+                    <td>{q.lessons?.map(l => l.lesson).join(', ')}</td>
                     <td>
                       <div className="flex gap-2">
-                        <button onClick={() => setEditing(q) || setShowModal(true)} className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">Edit</button>
-                        <button onClick={() => del(q.questid)} className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">Delete</button>
+                        <button
+                          onClick={() => (setEditing(q), setShowModal(true))}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => del(q.questid!)}
+                          className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -141,16 +158,19 @@ export default function QuestionsPage() {
             </h2>
 
             <form onSubmit={submit} className="space-y-4">
-              {/* MULTI SELECT LESSON */}
+              {/* MULTI SELECT — FIX #3: TS requires string[] */}
               <div>
                 <label className="form-label">Lessons *</label>
                 <select
                   multiple
                   required
                   className="form-input h-32"
-                  value={formData.lessonid}
+                  value={(formData.lessonid ?? []).map(String)}
                   onChange={(e) =>
-                    setFormData({ ...formData, lessonid: Array.from(e.target.selectedOptions).map(o => parseInt(o.value)) })
+                    setFormData({
+                      ...formData,
+                      lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value))
+                    })
                   }
                 >
                   {lessons.map(l => (
@@ -163,27 +183,49 @@ export default function QuestionsPage() {
 
               <div>
                 <label className="form-label">Question *</label>
-                <textarea className="form-textarea" required value={formData.question} onChange={(e) => setFormData({ ...formData, question: e.target.value })}/>
+                <textarea
+                  className="form-textarea"
+                  required
+                  value={formData.question || ''}
+                  onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+                />
               </div>
 
               <div>
                 <label className="form-label">Answer *</label>
-                <textarea className="form-textarea" required value={formData.answer} onChange={(e) => setFormData({ ...formData, answer: e.target.value })}/>
+                <textarea
+                  className="form-textarea"
+                  required
+                  value={formData.answer || ''}
+                  onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
+                />
               </div>
 
               <div>
                 <label className="form-label">Question Document URL</label>
-                <input className="form-input" value={formData.quest_doc} onChange={(e) => setFormData({ ...formData, quest_doc: e.target.value })}/>
+                <input
+                  className="form-input"
+                  value={formData.quest_doc || ''}
+                  onChange={(e) => setFormData({ ...formData, quest_doc: e.target.value })}
+                />
               </div>
 
               <div>
                 <label className="form-label">Answer Document URL</label>
-                <input className="form-input" value={formData.answer_doc} onChange={(e) => setFormData({ ...formData, answer_doc: e.target.value })}/>
+                <input
+                  className="form-input"
+                  value={formData.answer_doc || ''}
+                  onChange={(e) => setFormData({ ...formData, answer_doc: e.target.value })}
+                />
               </div>
 
               <div>
                 <label className="form-label">Explanation</label>
-                <textarea className="form-textarea" value={formData.explain} onChange={(e) => setFormData({ ...formData, explain: e.target.value })}/>
+                <textarea
+                  className="form-textarea"
+                  value={formData.explain || ''}
+                  onChange={(e) => setFormData({ ...formData, explain: e.target.value })}
+                />
               </div>
 
               <div className="flex gap-3 mt-6">
@@ -199,7 +241,6 @@ export default function QuestionsPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
