@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { Teacher, Exam, Subject } from '@/types/database';
 
 export default function TeachersPage() {
@@ -34,7 +34,8 @@ export default function TeachersPage() {
     if (s.success) setSubjects(s.data);
   };
 
-  const reset = () => setForm({ userid: 1, langid: [1], examid: 0, subjectid: 0, euserid: 1 });
+  const reset = () =>
+    setForm({ userid: 1, langid: [1], examid: 0, subjectid: 0, euserid: 1 });
 
   const openAdd = () => {
     setEditing(null);
@@ -42,7 +43,8 @@ export default function TeachersPage() {
     setShowModal(true);
   };
 
-  const submit = async () => {
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
     const method = editing ? 'PUT' : 'POST';
     const body = editing ? { ...form, teacherid: editing.teacherid } : form;
 
@@ -54,6 +56,7 @@ export default function TeachersPage() {
 
     if (res.success) {
       setShowModal(false);
+      setEditing(null);
       load();
     } else alert(res.error);
   };
@@ -97,18 +100,34 @@ export default function TeachersPage() {
                 </td>
               </tr>
             ) : (
-              teachers.map(t => (
+              teachers.map((t) => (
                 <tr key={t.teacherid}>
                   <td>{t.teacherid}</td>
                   <td>{t.userid}</td>
-                  <td>{t.langid.join(', ')}</td>
-                  <td>{t.exam_name}</td>
-                  <td>{t.subject_name}</td>
+                  <td>{t.langid?.join(', ')}</td>
+                  <td>{t.exam_name || '—'}</td>
+                  <td>{t.subject_name || '—'}</td>
                   <td className="flex gap-2">
-                    <button onClick={() => setEditing(t)} className="px-3 py-1 bg-blue-100 text-blue-700 rounded">
+                    <button
+                      onClick={() => {
+                        setEditing(t);
+                        setForm({
+                          userid: t.userid,
+                          langid: [...t.langid],
+                          examid: t.examid,
+                          subjectid: t.subjectid,
+                          euserid: 1,
+                        });
+                        setShowModal(true);
+                      }}
+                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded"
+                    >
                       Edit
                     </button>
-                    <button onClick={() => remove(t.teacherid!)} className="px-3 py-1 bg-red-100 text-red-700 rounded">
+                    <button
+                      onClick={() => remove(t.teacherid!)}
+                      className="px-3 py-1 bg-red-100 text-red-700 rounded"
+                    >
                       Delete
                     </button>
                   </td>
@@ -124,34 +143,60 @@ export default function TeachersPage() {
           <div className="bg-white p-6 rounded-lg w-full max-w-lg">
             <h2 className="text-xl font-bold mb-4">{editing ? 'Edit Teacher' : 'Assign Teacher'}</h2>
 
-            <label className="form-label">User ID</label>
-            <input className="form-input" type="number" value={form.userid}
-              onChange={e => setForm({ ...form, userid: parseInt(e.target.value) })} />
+            <form onSubmit={submit}>
+              <label className="form-label">User ID</label>
+              <input
+                type="number"
+                className="form-input"
+                value={form.userid ?? 1}
+                onChange={(e) => setForm({ ...form, userid: Number(e.target.value) })}
+              />
 
-            <label className="form-label mt-3">Languages</label>
-            <input className="form-input" value={form.langid!.join(',')}
-              onChange={e => setForm({ ...form, langid: e.target.value.split(',').map(Number) })} />
+              <label className="form-label mt-3">Languages</label>
+              <input
+                className="form-input"
+                value={(form.langid ?? []).join(',')}
+                onChange={(e) => setForm({ ...form, langid: e.target.value.split(',').map(Number) })}
+              />
 
-            <label className="form-label mt-3">Exam</label>
-            <select className="form-input" value={form.examid}
-              onChange={e => setForm({ ...form, examid: parseInt(e.target.value) })}>
-              <option value="">Select Exam</option>
-              {exams.map(e => <option key={e.examid} value={e.examid}>{e.exam}</option>)}
-            </select>
+              <label className="form-label mt-3">Exam</label>
+              <select
+                className="form-input"
+                value={form.examid ?? 0}
+                onChange={(e) => setForm({ ...form, examid: Number(e.target.value) })}
+              >
+                <option value="">Select Exam</option>
+                {exams.map((e) => (
+                  <option key={e.examid} value={e.examid}>
+                    {e.exam}
+                  </option>
+                ))}
+              </select>
 
-            <label className="form-label mt-3">Subject</label>
-            <select className="form-input" value={form.subjectid}
-              onChange={e => setForm({ ...form, subjectid: parseInt(e.target.value) })}>
-              <option value="">Select Subject</option>
-              {subjects.map(s => <option key={s.subjectid} value={s.subjectid}>{s.subject}</option>)}
-            </select>
+              <label className="form-label mt-3">Subject</label>
+              <select
+                className="form-input"
+                value={form.subjectid ?? 0}
+                onChange={(e) => setForm({ ...form, subjectid: Number(e.target.value) })}
+              >
+                <option value="">Select Subject</option>
+                {subjects.map((s) => (
+                  <option key={s.subjectid} value={s.subjectid}>
+                    {s.subject}
+                  </option>
+                ))}
+              </select>
 
-            <div className="flex gap-3 mt-6">
-              <button onClick={submit} className="btn btn-primary flex-1">
-                {editing ? 'Update' : 'Save'}
-              </button>
-              <button onClick={() => setShowModal(false)} className="btn btn-secondary flex-1">Cancel</button>
-            </div>
+              <div className="flex gap-3 mt-6">
+                <button type="submit" className="btn btn-primary flex-1">
+                  {editing ? 'Update' : 'Save'}
+                </button>
+                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary flex-1">
+                  Cancel
+                </button>
+              </div>
+            </form>
+
           </div>
         </div>
       )}

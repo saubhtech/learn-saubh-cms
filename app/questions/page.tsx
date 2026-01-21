@@ -27,7 +27,7 @@ export default function QuestionsPage() {
     answer: '',
     answer_doc: '',
     explain: '',
-    euserid: 1
+    euserid: 1,
   });
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function QuestionsPage() {
     if (d.success) setLessons(d.data);
   };
 
-  const submit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const method = editing ? 'PUT' : 'POST';
     const body = editing ? { ...formData, questid: editing.questid } : formData;
@@ -67,14 +67,14 @@ export default function QuestionsPage() {
     }
   };
 
-  const deleteQuestion = async (id: number) => {
+  const handleDelete = async (id: number) => {
     if (!confirm('Delete?')) return;
     const r = await fetch(`/api/questions?questid=${id}&euserid=1`, { method: 'DELETE' });
     const d = await r.json();
     if (d.success) void loadQuestions();
   };
 
-  const resetForm = () => {
+  const reset = () => {
     setFormData({
       langid: 1,
       lessonid: [],
@@ -83,18 +83,18 @@ export default function QuestionsPage() {
       answer: '',
       answer_doc: '',
       explain: '',
-      euserid: 1
+      euserid: 1,
     });
   };
 
   const openModal = () => {
-    resetForm();
+    reset();
     setEditing(null);
     setShowModal(true);
   };
 
   const closeModal = () => {
-    resetForm();
+    reset();
     setEditing(null);
     setShowModal(false);
   };
@@ -102,12 +102,9 @@ export default function QuestionsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Questions Management</h1>
-          <p className="text-gray-600 mt-1">Manage descriptive questions with multimedia</p>
-        </div>
-        <button onClick={openModal} className="btn btn-primary flex items-center gap-2">
-          <span className="text-xl">+</span> Add Question
+        <h1 className="text-3xl font-bold">Questions Management</h1>
+        <button onClick={openModal} className="btn btn-primary">
+          + Add Question
         </button>
       </div>
 
@@ -127,21 +124,27 @@ export default function QuestionsPage() {
             ) : questions.map(q => (
               <tr key={q.questid}>
                 <td>{q.questid}</td>
-                <td>{q.question.slice(0,50)}...</td>
+                <td>{q.question.slice(0, 50)}...</td>
                 <td>{q.lessonid.join(', ')}</td>
                 <td className="flex gap-2">
                   <button
                     className="px-3 py-1 bg-blue-100 text-blue-700 rounded"
                     onClick={() => {
                       setEditing(q);
-                      setFormData({ ...formData, lessonid: q.lessonid, question: q.question });
+                      setFormData({
+                        ...formData,
+                        lessonid: q.lessonid,
+                        question: q.question,
+                      });
                       setShowModal(true);
-                    }}>
+                    }}
+                  >
                     Edit
                   </button>
                   <button
                     className="px-3 py-1 bg-red-100 text-red-700 rounded"
-                    onClick={() => deleteQuestion(q.questid)}>
+                    onClick={() => handleDelete(q.questid)}
+                  >
                     Delete
                   </button>
                 </td>
@@ -152,11 +155,12 @@ export default function QuestionsPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-3xl">
-            <form onSubmit={submit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+
               <div>
-                <label className="form-label">Select Lessons *</label>
+                <label className="form-label">Lessons *</label>
                 <select
                   multiple
                   required
@@ -165,12 +169,14 @@ export default function QuestionsPage() {
                   onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                     setFormData({
                       ...formData,
-                      lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value))
+                      lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value)),
                     })
                   }
                 >
                   {lessons.map(l => (
-                    <option key={l.lessonid} value={l.lessonid}>{l.lesson}</option>
+                    <option key={l.lessonid} value={l.lessonid}>
+                      {l.lesson}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -191,19 +197,19 @@ export default function QuestionsPage() {
                 onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
               />
 
-              <div className="flex gap-2 mt-4">
-                <button className="btn btn-primary flex-1" type="submit">
+              <div className="flex gap-2">
+                <button type="submit" className="btn btn-primary flex-1">
                   {editing ? 'Update' : 'Create'}
                 </button>
-                <button className="btn btn-secondary flex-1" type="button" onClick={closeModal}>
+                <button type="button" className="btn btn-secondary flex-1" onClick={closeModal}>
                   Cancel
                 </button>
               </div>
+
             </form>
           </div>
         </div>
       )}
-
     </div>
   );
 }

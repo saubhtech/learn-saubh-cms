@@ -17,9 +17,7 @@ export default function MCQsPage() {
     option2: '',
     option3: '',
     option4: '',
-    // ❗ FIX starts
-    answer: undefined,    // NOT "", because TS union type
-    // ❗ FIX ends
+    answer: undefined,
     quest_doc: '',
     answer_doc: '',
     explain: '',
@@ -53,6 +51,7 @@ export default function MCQsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
+
     const d = await r.json();
     if (d.success) {
       close();
@@ -71,7 +70,6 @@ export default function MCQsPage() {
       option2: '',
       option3: '',
       option4: '',
-      // ❗ FIX again
       answer: undefined,
       quest_doc: '',
       answer_doc: '',
@@ -113,9 +111,9 @@ export default function MCQsPage() {
               ) : mcqs.map(m => (
                 <tr key={m.mcqid}>
                   <td>{m.mcqid}</td>
-                  <td>{m.question.slice(0,40)}...</td>
+                  <td>{m.question?.slice(0,40)}...</td>
                   <td>{m.answer}</td>
-                  <td>{m.lessonid?.join(', ')}</td>
+                  <td>{Array.isArray(m.lessonid) ? m.lessonid.join(', ') : ''}</td>
                   <td className="flex gap-2">
                     <button onClick={() => (setEdit(m), setShow(true))} className="btn btn-secondary">Edit</button>
                     <button onClick={() => del(m.mcqid!)} className="btn btn-danger">Delete</button>
@@ -130,37 +128,35 @@ export default function MCQsPage() {
       {show && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-6">
           <div className="bg-white p-6 rounded-lg w-full max-w-3xl overflow-y-auto">
-
             <h2 className="text-2xl font-bold mb-4">{edit ? 'Edit MCQ' : 'Add MCQ'}</h2>
 
             <form onSubmit={submit} className="space-y-4">
-
               <div>
-                <label className="form-label">Lessons</label>
+                <label className="form-label">Lessons *</label>
                 <select
-  multiple
-  required
-  className="form-input h-32"
-  value={form.lessonid?.map(String) || []}
-  onChange={e =>
-    setForm({
-      ...form,
-      lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value))
-    })
-  }
->
-  {lessons.map(l => (
-    <option key={l.lessonid} value={l.lessonid}>
-      {l.lesson}
-    </option>
-  ))}
-</select>
-
+                  multiple
+                  required
+                  className="form-input h-32"
+                  value={form.lessonid?.map(String) || []}
+                  onChange={e =>
+                    setForm({
+                      ...form,
+                      lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value))
+                    })
+                  }
+                >
+                  {lessons.map(l => (
+                    <option key={l.lessonid} value={l.lessonid}>
+                      {l.lesson}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
                 <label className="form-label">Question *</label>
-                <textarea className="form-textarea"
+                <textarea
+                  className="form-textarea"
                   required
                   value={form.question || ''}
                   onChange={e => setForm({ ...form, question: e.target.value })}
@@ -168,28 +164,18 @@ export default function MCQsPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <input className="form-input" required placeholder="Option 1"
-                  value={form.option1 || ''}
-                  onChange={e => setForm({ ...form, option1: e.target.value })}
-                />
-                <input className="form-input" required placeholder="Option 2"
-                  value={form.option2 || ''}
-                  onChange={e => setForm({ ...form, option2: e.target.value })}
-                />
-                <input className="form-input" placeholder="Option 3"
-                  value={form.option3 || ''}
-                  onChange={e => setForm({ ...form, option3: e.target.value })}
-                />
-                <input className="form-input" placeholder="Option 4"
-                  value={form.option4 || ''}
-                  onChange={e => setForm({ ...form, option4: e.target.value })}
-                />
+                <input className="form-input" required placeholder="Option 1" value={form.option1 || ''} onChange={e => setForm({ ...form, option1: e.target.value })} />
+                <input className="form-input" required placeholder="Option 2" value={form.option2 || ''} onChange={e => setForm({ ...form, option2: e.target.value })} />
+                <input className="form-input" placeholder="Option 3" value={form.option3 || ''} onChange={e => setForm({ ...form, option3: e.target.value })} />
+                <input className="form-input" placeholder="Option 4" value={form.option4 || ''} onChange={e => setForm({ ...form, option4: e.target.value })} />
               </div>
 
               <div>
                 <label className="form-label">Correct Answer *</label>
-                <select className="form-select" required
-                  value={form.answer || ''}
+                <select
+                  className="form-select"
+                  required
+                  value={form.answer ?? ''}
                   onChange={e => setForm({ ...form, answer: e.target.value as any })}
                 >
                   <option value="">Select</option>

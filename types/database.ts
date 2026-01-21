@@ -143,13 +143,18 @@ export interface MCQ {
 export interface Teacher {
   teacherid?: number;
   userid: number;
-  langid: number[];     // SQL array
-  examid: number;       // SQL single exam
-  subjectid: number;    // SQL single subject
+  langid: number[];
+  examid: number;
+  subjectid: number;
   euserid: number;
   edate?: Date;
   del?: boolean;
+
+  // UI join
+  exam_name?: string;
+  subject_name?: string;
 }
+
 
 // ---- Learner ----
 export interface Learner {
