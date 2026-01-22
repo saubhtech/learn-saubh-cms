@@ -439,7 +439,7 @@ export default function MCQsPage() {
                 <div>
                   <label className="form-label">Question *</label>
                   <Editor
-                    onInit={(evt, editor) => questionEditorRef.current = editor}
+                    onInit={(_evt: any, editor: any) => questionEditorRef.current = editor}
                     initialValue={form.question}
                     init={editorConfig}
                   />
@@ -472,22 +472,22 @@ export default function MCQsPage() {
                   
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Option 1 *</label>
-                    <Editor onInit={(evt, editor) => option1EditorRef.current = editor} initialValue={form.option1} init={{ ...editorConfig, height: 150 }} />
+                    <Editor onInit={(_evt: any, editor: any) => option1EditorRef.current = editor} initialValue={form.option1} init={{ ...editorConfig, height: 150 }} />
                   </div>
 
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Option 2 *</label>
-                    <Editor onInit={(evt, editor) => option2EditorRef.current = editor} initialValue={form.option2} init={{ ...editorConfig, height: 150 }} />
+                    <Editor onInit={(_evt: any, editor: any) => option2EditorRef.current = editor} initialValue={form.option2} init={{ ...editorConfig, height: 150 }} />
                   </div>
 
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Option 3 (Optional)</label>
-                    <Editor onInit={(evt, editor) => option3EditorRef.current = editor} initialValue={form.option3} init={{ ...editorConfig, height: 150 }} />
+                    <Editor onInit={(_evt: any, editor: any) => option3EditorRef.current = editor} initialValue={form.option3} init={{ ...editorConfig, height: 150 }} />
                   </div>
 
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Option 4 (Optional)</label>
-                    <Editor onInit={(evt, editor) => option4EditorRef.current = editor} initialValue={form.option4} init={{ ...editorConfig, height: 150 }} />
+                    <Editor onInit={(_evt: any, editor: any) => option4EditorRef.current = editor} initialValue={form.option4} init={{ ...editorConfig, height: 150 }} />
                   </div>
                 </div>
 
@@ -506,7 +506,7 @@ export default function MCQsPage() {
                 {/* EXPLANATION */}
                 <div>
                   <label className="form-label">Explanation</label>
-                  <Editor onInit={(evt, editor) => explainEditorRef.current = editor} initialValue={form.explain} init={editorConfig} />
+                  <Editor onInit={(_evt: any, editor: any) => explainEditorRef.current = editor} initialValue={form.explain} init={editorConfig} />
                 </div>
 
                 {/* Answer Documents */}
