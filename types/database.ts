@@ -2,6 +2,15 @@
 // DATABASE TYPE DEFINITIONS (MATCH SQL)
 // ====================================
 
+// ---- Language Table ----
+export interface Language {
+  langid: number;
+  lang_name: string;
+  euserid?: number;
+  edate?: Date;
+  del?: boolean;
+}
+
 // ---- Exam Table ----
 export interface Exam {
   examid?: number;
@@ -15,6 +24,7 @@ export interface Exam {
   del?: boolean;
 
   // UI JOIN
+  lang_name?: string;
   subject_count?: number;
 }
 
@@ -37,6 +47,7 @@ export interface Subject {
   del?: boolean;
 
   // UI JOIN
+  lang_name?: string;
   exam_name?: string;
   unit_count?: number;
   lesson_count?: number;
@@ -56,6 +67,7 @@ export interface Unit {
   del?: boolean;
 
   // UI JOIN
+  lang_name?: string;
   subject_name?: string;
   exam_name?: string;
 }
@@ -64,6 +76,7 @@ export interface Unit {
 export interface Lesson {
   lessonid?: number;
   langid: number;
+  examid?: number;
   subjectid: number;
   unitid?: number;
   lesson: string;
@@ -78,52 +91,52 @@ export interface Lesson {
   del?: boolean;
 
   // UI JOIN
+  lang_name?: string;
   subject_name?: string;
   unit_name?: string;
   exam_name?: string;
 }
 
 // ---- Topic Table ----
-// ---- Topic Table ----
 export interface Topic {
   topicid?: number;
   langid: number;
+  examid?: number;
+  subjectid?: number;
   lessonid: number;
   topic: string;
   explain?: string;
-  topic_doc?: string;
-  topic_audio?: string;
-  topic_video?: string;
+  topic_doc?: string[];
+  topic_audio?: string[];
+  topic_video?: string[];
   euserid: number;
   edate?: Date;
   del?: boolean;
 
   // UI JOIN
+  lang_name?: string;
   lesson_name?: string;
   subject_name?: string;
   exam_name?: string;
-
-  // 🔥 add these for UI filter
-  subjectid?: number;
-  examid?: number;
 }
 
 // ---- Descriptive Question (equest) ----
 export interface Question {
   questid?: number;
   langid: number;
-  lessonid: number[];
+  topicid: number[];
   question: string;
-  quest_doc?: string;
+  quest_doc?: string[];
   answer: string;
-  answer_doc?: string;
+  answer_doc?: string[];
   explain?: string;
   euserid: number;
   edate?: Date;
   del?: boolean;
 
   // UI JOIN
-  lessons?: { lessonid: number; lesson: string }[];
+  lang_name?: string;
+  topics?: { topicid: number; topic: string }[];
 }
 
 // ---- MCQ (emcq) ----
@@ -132,17 +145,21 @@ export interface MCQ {
   langid: number;
   lessonid: number[];
   question: string;
-  quest_doc?: string;
+  quest_doc?: string[];
   option1: string;
   option2: string;
   option3?: string;
   option4?: string;
   answer: '1' | '2' | '3' | '4';
-  answer_doc?: string;
+  answer_doc?: string[];
   explain?: string;
   euserid: number;
   edate?: Date;
   del?: boolean;
+
+  // UI JOIN
+  lang_name?: string;
+  lessons?: { lessonid: number; lesson: string }[];
 }
 
 // ---- Teacher ----
@@ -157,16 +174,16 @@ export interface Teacher {
   del?: boolean;
 
   // UI join
+  lang_names?: string[];
   exam_name?: string;
   subject_name?: string;
 }
-
 
 // ---- Learner ----
 export interface Learner {
   learnerid?: number;
   userid: number;
-  langid: number;     // SQL required
+  langid: number;
   examid: number;
   subjectid: number;
   euserid: number;
@@ -174,6 +191,7 @@ export interface Learner {
   del?: boolean;
 
   // UI JOIN
+  lang_name?: string;
   exam_name?: string;
   subject_name?: string;
 }
@@ -222,6 +240,7 @@ export interface Test {
 
 // Table Names (optional utils)
 export type TableName =
+  | 'elanguage'
   | 'exam'
   | 'esubject'
   | 'eunit'
