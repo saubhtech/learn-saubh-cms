@@ -15,6 +15,7 @@ interface Language {
 interface Topic {
   topicid: number;
   topic: string;
+  langid: number; // ✅ ADDED - This was missing
   lessonid: number[];
   topic_doc?: string[];
   topic_audio?: string[];
@@ -200,7 +201,7 @@ export default function QuestionsPage() {
     setShowModal(true);
   };
 
-  // Filter topics by language
+  // ✅ FIXED: Filter topics by language - Now TypeScript knows langid exists
   const filteredTopics = formData.langid
     ? topics.filter(t => t.langid === formData.langid)
     : [];
