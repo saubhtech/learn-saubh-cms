@@ -9,7 +9,9 @@ interface Language {
 
 interface Lesson {
   lessonid: number;
+  langid: number; // ✅ ADDED - This was missing
   lesson: string;
+  subjectid?: number;
 }
 
 interface MCQ {
@@ -182,6 +184,7 @@ export default function MCQsPage() {
     });
   };
 
+  // ✅ FIXED: Now TypeScript knows langid exists in Lesson interface
   const filteredLessons = form.langid
     ? lessons.filter(l => l.langid === form.langid)
     : [];
