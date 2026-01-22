@@ -429,8 +429,8 @@ export default function LessonsPage() {
                 {/* Content - TinyMCE Editor */}
                 <div>
                   <label className="form-label">Content</label>
-                  <Editor
-                    onInit={(evt, editor) => contentEditorRef.current = editor}
+                 <Editor
+                    onInit={(_evt, editor) => contentEditorRef.current = editor}
                     initialValue={form.content || ''}
                     init={editorConfig}
                   />
