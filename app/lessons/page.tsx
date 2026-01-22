@@ -430,7 +430,7 @@ export default function LessonsPage() {
                 <div>
                   <label className="form-label">Content</label>
                  <Editor
-                    onInit={(_evt, editor) => contentEditorRef.current = editor}
+                    onInit={(_evt: any, editor: any) => contentEditorRef.current = editor}
                     initialValue={form.content || ''}
                     init={editorConfig}
                   />
