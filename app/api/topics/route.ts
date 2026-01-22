@@ -3,20 +3,22 @@ import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const lessonid = searchParams.get('lessonid');
+    const lessonid = request.nextUrl.searchParams.get('lessonid');
 
     let sql = `
-      SELECT t.*, 
+      SELECT t.*,
              l.lesson AS lesson_name,
              s.subject AS subject_name,
-             e.exam AS exam_name
+             e.exam AS exam_name,
+             ln.lang_name AS language
       FROM etopic t
       JOIN elesson l ON t.lessonid = l.lessonid
       JOIN esubject s ON l.subjectid = s.subjectid
       JOIN exam e ON s.examid = e.examid
+      LEFT JOIN language ln ON t.langid = ln.langid
       WHERE t.del = false
     `;
+
     const params: any[] = [];
 
     if (lessonid) {
@@ -27,8 +29,8 @@ export async function GET(request: NextRequest) {
     sql += ' ORDER BY t.topicid DESC';
 
     const result = await query(sql, params);
-
     return NextResponse.json({ success: true, data: result.rows });
+
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -43,15 +45,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
 
-    const result = await query(
-      `INSERT INTO etopic (
-        langid, lessonid, topic, explain, topic_doc, topic_audio, topic_video, euserid, edate, del
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_DATE,false)
-      RETURNING *`,
+    const res = await query(
+      `INSERT INTO etopic
+       (langid, lessonid, topic, explain, topic_doc, topic_audio, topic_video, euserid, edate, del)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_DATE,false)
+       RETURNING *`,
       [langid, lessonid, topic, explain, topic_doc, topic_audio, topic_video, euserid]
     );
 
-    return NextResponse.json({ success: true, data: result.rows[0], message: 'Topic created successfully' });
+    return NextResponse.json({ success: true, data: res.rows[0], message: 'Topic created successfully' });
+
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -66,7 +69,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing topicid or euserid' }, { status: 400 });
     }
 
-    const result = await query(
+    const res = await query(
       `UPDATE etopic
        SET langid = COALESCE($1, langid),
            lessonid = COALESCE($2, lessonid),
@@ -82,11 +85,8 @@ export async function PUT(request: NextRequest) {
       [langid, lessonid, topic, explain, topic_doc, topic_audio, topic_video, euserid, topicid]
     );
 
-    if (result.rowCount === 0) {
-      return NextResponse.json({ success: false, error: 'Topic not found' }, { status: 404 });
-    }
+    return NextResponse.json({ success: true, data: res.rows[0], message: 'Topic updated successfully' });
 
-    return NextResponse.json({ success: true, data: result.rows[0], message: 'Topic updated successfully' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -94,15 +94,14 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const topicid = searchParams.get('topicid');
-    const euserid = searchParams.get('euserid');
+    const topicid = request.nextUrl.searchParams.get('topicid');
+    const euserid = request.nextUrl.searchParams.get('euserid');
 
     if (!topicid || !euserid) {
       return NextResponse.json({ success: false, error: 'Missing topicid or euserid' }, { status: 400 });
     }
 
-    const result = await query(
+    const r = await query(
       `UPDATE etopic
        SET del = true, euserid = $1, edate = CURRENT_DATE
        WHERE topicid = $2
@@ -110,11 +109,8 @@ export async function DELETE(request: NextRequest) {
       [euserid, topicid]
     );
 
-    if (result.rowCount === 0) {
-      return NextResponse.json({ success: false, error: 'Topic not found' }, { status: 404 });
-    }
-
     return NextResponse.json({ success: true, message: 'Topic deleted successfully' });
+
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

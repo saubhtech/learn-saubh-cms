@@ -1,40 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const subjectid = searchParams.get('subjectid');
-    
-    let sql = `
-      SELECT u.*, s.subject as subject_name, e.exam as exam_name
+    const result = await query(`
+      SELECT u.*, 
+             s.subject AS subject_name,
+             e.exam AS exam_name,
+             l.lang_name AS language
       FROM eunit u
       LEFT JOIN esubject s ON u.subjectid = s.subjectid
       LEFT JOIN exam e ON s.examid = e.examid
+      LEFT JOIN language l ON u.langid = l.langid
       WHERE u.del = false
-    `;
-    const params: any[] = [];
-    
-    if (subjectid) {
-      sql += ' AND u.subjectid = $1';
-      params.push(subjectid);
-    }
-    
-    sql += ' ORDER BY u.unitid DESC';
-    
-    const result = await query(sql, params);
-    
+      ORDER BY u.unitid DESC
+    `);
+
     return NextResponse.json({
       success: true,
       data: result.rows,
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
 
 export async function POST(request: NextRequest) {
   try {
