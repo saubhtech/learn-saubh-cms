@@ -530,7 +530,7 @@ export default function QuestionsPage() {
                 <div>
                   <label className="form-label">Question *</label>
                   <Editor
-                    onInit={(evt, editor) => questionEditorRef.current = editor}
+                    onInit={(_evt: any, editor: any) => questionEditorRef.current = editor}
                     initialValue={formData.question || ''}
                     init={editorConfig}
                   />
@@ -582,7 +582,7 @@ export default function QuestionsPage() {
                 <div>
                   <label className="form-label">Answer *</label>
                   <Editor
-                    onInit={(evt, editor) => answerEditorRef.current = editor}
+                    onInit={(_evt: any, editor: any) => answerEditorRef.current = editor}
                     initialValue={formData.answer || ''}
                     init={editorConfig}
                   />
@@ -634,7 +634,7 @@ export default function QuestionsPage() {
                 <div>
                   <label className="form-label">Explanation</label>
                   <Editor
-                    onInit={(evt, editor) => explainEditorRef.current = editor}
+                    onInit={(_evt: any, editor: any) => explainEditorRef.current = editor}
                     initialValue={formData.explain || ''}
                     init={editorConfig}
                   />
