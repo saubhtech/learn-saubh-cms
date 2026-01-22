@@ -76,11 +76,8 @@ export async function POST(request: NextRequest) {
 
     console.log('🔗 Connecting to FTP server...');
     
-    // Connect to FTP server with timeout
-    await client.access({
-      ...FTP_CONFIG,
-      timeout: 30000, // 30 seconds timeout
-    });
+    // Connect to FTP server
+    await client.access(FTP_CONFIG);
     
     console.log('✅ Connected to FTP server');
 
