@@ -429,7 +429,7 @@ export default function TopicsPage() {
                 <div>
                   <label className="form-label">Explanation</label>
                   <Editor
-                    onInit={(evt, editor) => explainEditorRef.current = editor}
+                    onInit={(_evt: any, editor: any) => explainEditorRef.current = editor}
                     initialValue={formData.explain || ''}
                     init={editorConfig}
                   />
