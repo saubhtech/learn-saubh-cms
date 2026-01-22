@@ -1,17 +1,29 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent, useRef } from 'react';
+import { Editor } from '@tinymce/tinymce-react';
 
 interface Language {
   langid: number;
   lang_name: string;
 }
 
+interface Exam {
+  examid: number;
+  exam: string;
+  langid: number;
+}
+
+interface Subject {
+  subjectid: number;
+  subject: string;
+  examid: number;
+}
+
 interface Lesson {
   lessonid: number;
-  langid: number; // ✅ ADDED - This was missing
   lesson: string;
-  subjectid?: number;
+  subjectid: number;
 }
 
 interface MCQ {
@@ -33,14 +45,25 @@ interface MCQ {
 export default function MCQsPage() {
   const [mcqs, setMcqs] = useState<MCQ[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
 
   const [show, setShow] = useState(false);
   const [edit, setEdit] = useState<MCQ | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
 
+  const questionEditorRef = useRef<any>(null);
+  const option1EditorRef = useRef<any>(null);
+  const option2EditorRef = useRef<any>(null);
+  const option3EditorRef = useRef<any>(null);
+  const option4EditorRef = useRef<any>(null);
+  const explainEditorRef = useRef<any>(null);
+
   const [form, setForm] = useState({
     langid: undefined as number | undefined,
+    examid: undefined as number | undefined,
+    subjectid: undefined as number | undefined,
     lessonid: [] as number[],
     question: '',
     quest_doc: [] as string[],
@@ -60,14 +83,18 @@ export default function MCQsPage() {
 
   const loadAll = async () => {
     try {
-      const [m, l, lg] = await Promise.all([
+      const [m, ln, s, e, lg] = await Promise.all([
         fetch('/api/mcqs').then(r => r.json()),
         fetch('/api/lessons').then(r => r.json()),
+        fetch('/api/subjects').then(r => r.json()),
+        fetch('/api/exams').then(r => r.json()),
         fetch('/api/language').then(r => r.json()),
       ]);
 
       if (m.success) setMcqs(m.data);
-      if (l.success) setLessons(l.data);
+      if (ln.success) setLessons(ln.data);
+      if (s.success) setSubjects(s.data);
+      if (e.success) setExams(e.data);
       if (lg.success) setLanguages(lg.data);
     } catch (err) {
       console.error('Failed to load data:', err);
@@ -131,7 +158,15 @@ export default function MCQsPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (!form.option1 || !form.option2) {
+    // Get content from TinyMCE editors
+    const question = questionEditorRef.current?.getContent() || '';
+    const option1 = option1EditorRef.current?.getContent() || '';
+    const option2 = option2EditorRef.current?.getContent() || '';
+    const option3 = option3EditorRef.current?.getContent() || '';
+    const option4 = option4EditorRef.current?.getContent() || '';
+    const explain = explainEditorRef.current?.getContent() || '';
+
+    if (!option1 || !option2) {
       alert('At least 2 options are required');
       return;
     }
@@ -142,7 +177,9 @@ export default function MCQsPage() {
     }
 
     const method = edit ? 'PUT' : 'POST';
-    const body = edit ? { ...form, mcqid: edit.mcqid } : form;
+    const body = edit 
+      ? { ...form, question, option1, option2, option3, option4, explain, mcqid: edit.mcqid } 
+      : { ...form, question, option1, option2, option3, option4, explain };
 
     const r = await fetch('/api/mcqs', {
       method,
@@ -170,6 +207,8 @@ export default function MCQsPage() {
     setEdit(null);
     setForm({
       langid: undefined,
+      examid: undefined,
+      subjectid: undefined,
       lessonid: [],
       question: '',
       quest_doc: [],
@@ -184,10 +223,30 @@ export default function MCQsPage() {
     });
   };
 
-  // ✅ FIXED: Now TypeScript knows langid exists in Lesson interface
-  const filteredLessons = form.langid
-    ? lessons.filter(l => l.langid === form.langid)
+  // Hierarchical filtering
+  const filteredExams = form.langid
+    ? exams.filter(e => e.langid === form.langid)
     : [];
+
+  const filteredSubjects = form.examid
+    ? subjects.filter(s => s.examid === form.examid)
+    : [];
+
+  const filteredLessons = form.subjectid
+    ? lessons.filter(l => l.subjectid === form.subjectid)
+    : [];
+
+  const editorConfig = {
+    height: 200,
+    menubar: false,
+    plugins: [
+      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+      'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+    ],
+    toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+  };
 
   return (
     <div>
@@ -229,7 +288,7 @@ export default function MCQsPage() {
                   <tr key={m.mcqid}>
                     <td className="whitespace-nowrap">{m.mcqid}</td>
                     <td className="max-w-md">
-                      <div className="truncate">{m.question}</div>
+                      <div className="truncate" dangerouslySetInnerHTML={{ __html: m.question }} />
                     </td>
                     <td className="whitespace-nowrap">
                       <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-semibold">
@@ -263,6 +322,8 @@ export default function MCQsPage() {
                             setEdit(m);
                             setForm({
                               langid: m.langid,
+                              examid: undefined,
+                              subjectid: undefined,
                               lessonid: Array.isArray(m.lessonid) ? m.lessonid : [],
                               question: m.question || '',
                               quest_doc: Array.isArray(m.quest_doc) ? m.quest_doc : [],
@@ -300,27 +361,15 @@ export default function MCQsPage() {
       {/* MODAL */}
       {show && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto relative shadow-lg">
+          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto relative shadow-lg">
             
-            {/* Close Button */}
-            <button
-              onClick={close}
-              className="absolute top-3 right-3 text-xl text-gray-600 hover:text-black z-10"
-            >
-              ✕
-            </button>
+            <button onClick={close} className="absolute top-3 right-3 text-xl text-gray-600 hover:text-black z-10">✕</button>
 
-            {/* Header */}
             <div className="border-b px-6 py-4">
-              <h2 className="text-xl font-semibold text-gray-800">
-                {edit ? 'Edit MCQ' : 'Add MCQ'}
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                {edit ? 'Update MCQ details below' : 'Enter details to create a new MCQ (minimum 2 options required)'}
-              </p>
+              <h2 className="text-xl font-semibold text-gray-800">{edit ? 'Edit MCQ' : 'Add MCQ'}</h2>
+              <p className="text-sm text-gray-500 mt-1">{edit ? 'Update MCQ details below' : 'Enter details to create a new MCQ'}</p>
             </div>
 
-            {/* Body */}
             <div className="p-6">
               <form onSubmit={submit} className="space-y-4">
 
@@ -331,16 +380,44 @@ export default function MCQsPage() {
                     className="form-select bg-white text-black"
                     value={form.langid || ''}
                     required
-                    onChange={e => setForm({ ...form, langid: Number(e.target.value), lessonid: [] })}
+                    onChange={e => setForm({ ...form, langid: Number(e.target.value), examid: undefined, subjectid: undefined, lessonid: [] })}
                   >
                     <option value="">Select Language</option>
-                    {languages.map(l => (
-                      <option key={l.langid} value={l.langid}>{l.lang_name}</option>
-                    ))}
+                    {languages.map(l => <option key={l.langid} value={l.langid}>{l.lang_name}</option>)}
                   </select>
                 </div>
 
-                {/* LESSON MULTI SELECT */}
+                {/* EXAM */}
+                <div>
+                  <label className="form-label">Exam *</label>
+                  <select
+                    className="form-select bg-white text-black"
+                    value={form.examid || ''}
+                    required
+                    disabled={!form.langid}
+                    onChange={e => setForm({ ...form, examid: Number(e.target.value), subjectid: undefined, lessonid: [] })}
+                  >
+                    <option value="">Select Exam</option>
+                    {filteredExams.map(e => <option key={e.examid} value={e.examid}>{e.exam}</option>)}
+                  </select>
+                </div>
+
+                {/* SUBJECT */}
+                <div>
+                  <label className="form-label">Subject *</label>
+                  <select
+                    className="form-select bg-white text-black"
+                    value={form.subjectid || ''}
+                    required
+                    disabled={!form.examid}
+                    onChange={e => setForm({ ...form, subjectid: Number(e.target.value), lessonid: [] })}
+                  >
+                    <option value="">Select Subject</option>
+                    {filteredSubjects.map(s => <option key={s.subjectid} value={s.subjectid}>{s.subject}</option>)}
+                  </select>
+                </div>
+
+                {/* LESSONS */}
                 <div>
                   <label className="form-label">Lessons * (Hold Ctrl/Cmd to select multiple)</label>
                   <select
@@ -348,206 +425,112 @@ export default function MCQsPage() {
                     required
                     className="form-select bg-white text-black h-32"
                     value={form.lessonid.map(String)}
-                    disabled={!form.langid}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value))
-                      })
-                    }
+                    disabled={!form.subjectid}
+                    onChange={(e) => setForm({ ...form, lessonid: Array.from(e.target.selectedOptions).map(o => Number(o.value)) })}
                   >
-                    {filteredLessons.map(l => (
-                      <option key={l.lessonid} value={l.lessonid}>{l.lesson}</option>
-                    ))}
+                    {filteredLessons.map(l => <option key={l.lessonid} value={l.lessonid}>{l.lesson}</option>)}
                   </select>
-                  {!form.langid && (
-                    <p className="text-xs text-gray-500 mt-1">Please select a language first</p>
-                  )}
                   {form.lessonid.length > 0 && (
-                    <p className="text-xs text-blue-600 mt-1">
-                      {form.lessonid.length} lesson{form.lessonid.length !== 1 ? 's' : ''} selected
-                    </p>
+                    <p className="text-xs text-blue-600 mt-1">{form.lessonid.length} lesson{form.lessonid.length !== 1 ? 's' : ''} selected</p>
                   )}
                 </div>
 
                 {/* QUESTION */}
                 <div>
                   <label className="form-label">Question *</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={3}
-                    required
-                    placeholder="Enter the question"
-                    value={form.question}
-                    onChange={e => setForm({ ...form, question: e.target.value })}
+                  <Editor
+                    onInit={(evt, editor) => questionEditorRef.current = editor}
+                    initialValue={form.question}
+                    init={editorConfig}
                   />
                 </div>
 
-                {/* Question Documents Upload */}
+                {/* Question Documents */}
                 <div>
                   <label className="form-label">Question Documents/Images</label>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="file"
-                        id="quest-doc-upload"
-                        className="hidden"
-                        accept=".pdf,.doc,.docx,image/*"
-                        onChange={(e) => handleFileUpload(e, 'quest_doc')}
-                        disabled={uploading !== null}
-                      />
-                      <label
-                        htmlFor="quest-doc-upload"
-                        className={`px-4 py-2 bg-gray-100 text-gray-700 rounded cursor-pointer hover:bg-gray-200 transition ${uploading !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {uploading === 'quest_doc' ? '⏳ Uploading...' : '📁 Browse Question File'}
-                      </label>
-                    </div>
+                    <input type="file" id="quest-doc-upload" className="hidden" accept=".pdf,.doc,.docx,image/*" onChange={(e) => handleFileUpload(e, 'quest_doc')} disabled={uploading !== null} />
+                    <label htmlFor="quest-doc-upload" className={`px-4 py-2 bg-gray-100 text-gray-700 rounded cursor-pointer hover:bg-gray-200 transition ${uploading !== null ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      {uploading === 'quest_doc' ? '⏳ Uploading...' : '📁 Browse Question File'}
+                    </label>
                     {form.quest_doc && form.quest_doc.length > 0 && (
                       <div className="space-y-1">
                         {form.quest_doc.map((doc, idx) => (
                           <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded">
-                            <a href={doc} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex-1 truncate">
-                              📄 Question File {idx + 1}
-                            </a>
-                            <button
-                              type="button"
-                              onClick={() => removeFile('quest_doc', idx)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Remove
-                            </button>
+                            <a href={doc} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex-1 truncate">📄 Question File {idx + 1}</a>
+                            <button type="button" onClick={() => removeFile('quest_doc', idx)} className="text-red-600 hover:underline">Remove</button>
                           </div>
                         ))}
                       </div>
                     )}
-                    <p className="text-xs text-gray-500">PDF, DOC, DOCX, Images (Max 10MB)</p>
                   </div>
                 </div>
 
-                {/* OPTIONS with spacing */}
+                {/* OPTIONS */}
                 <div className="space-y-3">
-                  <label className="form-label">Answer Options * (Minimum 2 required)</label>
+                  <label className="form-label">Answer Options *</label>
                   
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Option 1 *</label>
-                    <input
-                      className="form-input"
-                      required
-                      placeholder="Enter option 1"
-                      value={form.option1}
-                      onChange={e => setForm({ ...form, option1: e.target.value })}
-                    />
+                    <Editor onInit={(evt, editor) => option1EditorRef.current = editor} initialValue={form.option1} init={{ ...editorConfig, height: 150 }} />
                   </div>
 
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Option 2 *</label>
-                    <input
-                      className="form-input"
-                      required
-                      placeholder="Enter option 2"
-                      value={form.option2}
-                      onChange={e => setForm({ ...form, option2: e.target.value })}
-                    />
+                    <Editor onInit={(evt, editor) => option2EditorRef.current = editor} initialValue={form.option2} init={{ ...editorConfig, height: 150 }} />
                   </div>
 
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Option 3 (Optional)</label>
-                    <input
-                      className="form-input"
-                      placeholder="Enter option 3 (optional)"
-                      value={form.option3}
-                      onChange={e => setForm({ ...form, option3: e.target.value })}
-                    />
+                    <Editor onInit={(evt, editor) => option3EditorRef.current = editor} initialValue={form.option3} init={{ ...editorConfig, height: 150 }} />
                   </div>
 
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Option 4 (Optional)</label>
-                    <input
-                      className="form-input"
-                      placeholder="Enter option 4 (optional)"
-                      value={form.option4}
-                      onChange={e => setForm({ ...form, option4: e.target.value })}
-                    />
+                    <Editor onInit={(evt, editor) => option4EditorRef.current = editor} initialValue={form.option4} init={{ ...editorConfig, height: 150 }} />
                   </div>
                 </div>
 
                 {/* ANSWER */}
                 <div>
                   <label className="form-label">Correct Answer *</label>
-                  <select
-                    className="form-select bg-white text-black"
-                    required
-                    value={form.answer}
-                    onChange={e => setForm({ ...form, answer: e.target.value })}
-                  >
+                  <select className="form-select bg-white text-black" required value={form.answer} onChange={e => setForm({ ...form, answer: e.target.value })}>
                     <option value="">Select correct answer</option>
                     <option value="1">Option 1</option>
                     <option value="2">Option 2</option>
-                    {form.option3 && <option value="3">Option 3</option>}
-                    {form.option4 && <option value="4">Option 4</option>}
+                    <option value="3">Option 3</option>
+                    <option value="4">Option 4</option>
                   </select>
                 </div>
 
                 {/* EXPLANATION */}
                 <div>
                   <label className="form-label">Explanation</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={3}
-                    placeholder="Explain why this is the correct answer (optional)"
-                    value={form.explain}
-                    onChange={e => setForm({ ...form, explain: e.target.value })}
-                  />
+                  <Editor onInit={(evt, editor) => explainEditorRef.current = editor} initialValue={form.explain} init={editorConfig} />
                 </div>
 
-                {/* Answer Documents Upload */}
+                {/* Answer Documents */}
                 <div>
                   <label className="form-label">Answer Explanation Documents</label>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="file"
-                        id="answer-doc-upload"
-                        className="hidden"
-                        accept=".pdf,.doc,.docx,image/*"
-                        onChange={(e) => handleFileUpload(e, 'answer_doc')}
-                        disabled={uploading !== null}
-                      />
-                      <label
-                        htmlFor="answer-doc-upload"
-                        className={`px-4 py-2 bg-gray-100 text-gray-700 rounded cursor-pointer hover:bg-gray-200 transition ${uploading !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {uploading === 'answer_doc' ? '⏳ Uploading...' : '📁 Browse Answer File'}
-                      </label>
-                    </div>
+                    <input type="file" id="answer-doc-upload" className="hidden" accept=".pdf,.doc,.docx,image/*" onChange={(e) => handleFileUpload(e, 'answer_doc')} disabled={uploading !== null} />
+                    <label htmlFor="answer-doc-upload" className={`px-4 py-2 bg-gray-100 text-gray-700 rounded cursor-pointer hover:bg-gray-200 transition ${uploading !== null ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      {uploading === 'answer_doc' ? '⏳ Uploading...' : '📁 Browse Answer File'}
+                    </label>
                     {form.answer_doc && form.answer_doc.length > 0 && (
                       <div className="space-y-1">
                         {form.answer_doc.map((doc, idx) => (
                           <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded">
-                            <a href={doc} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex-1 truncate">
-                              📄 Answer File {idx + 1}
-                            </a>
-                            <button
-                              type="button"
-                              onClick={() => removeFile('answer_doc', idx)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Remove
-                            </button>
+                            <a href={doc} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex-1 truncate">📄 Answer File {idx + 1}</a>
+                            <button type="button" onClick={() => removeFile('answer_doc', idx)} className="text-red-600 hover:underline">Remove</button>
                           </div>
                         ))}
                       </div>
                     )}
-                    <p className="text-xs text-gray-500">PDF, DOC, DOCX, Images (Max 10MB)</p>
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  className="btn btn-primary w-full"
-                  disabled={uploading !== null}
-                >
+                <button type="submit" className="btn btn-primary w-full" disabled={uploading !== null}>
                   {uploading !== null ? 'Please wait...' : edit ? 'Update MCQ' : 'Create MCQ'}
                 </button>
               </form>

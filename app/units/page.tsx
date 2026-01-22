@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { Editor } from '@tinymce/tinymce-react';
 import { Unit, Subject, Exam, Language } from '@/types/database';
 
 export default function UnitsPage() {
@@ -13,6 +14,8 @@ export default function UnitsPage() {
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const chapterEditorRef = useRef<any>(null);
 
   const [formData, setFormData] = useState<any>({
     langid: undefined,
@@ -130,9 +133,12 @@ export default function UnitsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Get content from TinyMCE editor
+    const chapter = chapterEditorRef.current?.getContent() || '';
+
     const body = editingUnit
-      ? { ...formData, unitid: editingUnit.unitid }
-      : formData;
+      ? { ...formData, chapter, unitid: editingUnit.unitid }
+      : { ...formData, chapter };
 
     const res = await fetch('/api/units', {
       method: editingUnit ? 'PUT' : 'POST',
@@ -182,26 +188,32 @@ export default function UnitsPage() {
     resetForm();
   };
 
-  // Filter exams based on selected language (if language is selected)
+  // Filter exams based on selected language
   const filteredExams = formData.langid
     ? exams.filter(e => e.langid === formData.langid)
-    : exams; // Show all exams if no language selected
+    : exams;
 
-  // Filter subjects based on selected exam (and optionally language)
+  // Filter subjects based on selected exam
   const filteredSubjects = formData.examid
     ? subjects.filter(s => {
-        // Match by examid is mandatory
         const examMatch = s.examid === formData.examid;
-        // If language is selected, also match by langid
         const langMatch = formData.langid ? s.langid === formData.langid : true;
         return examMatch && langMatch;
       })
     : [];
 
-  console.log('Form Data:', formData);
-  console.log('All Subjects:', subjects);
-  console.log('Filtered Subjects:', filteredSubjects);
-
+  const editorConfig = {
+  apiKey: '5lju5xslblj3hsz63j08txwlz7apyt02nr2z6l2nt5gghtw0',
+  height: 300,
+  menubar: false,
+  plugins: [
+    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+    'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+  ],
+  toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+  content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+};
   if (loading) {
     return (
       <div className="flex justify-center py-24">
@@ -219,10 +231,7 @@ export default function UnitsPage() {
           <p className="text-gray-600">Organize units under subjects</p>
         </div>
 
-        <button
-          onClick={openAddModal}
-          className="btn btn-primary"
-        >
+        <button onClick={openAddModal} className="btn btn-primary">
           + Add Unit
         </button>
       </div>
@@ -261,12 +270,7 @@ export default function UnitsPage() {
                     <td className="whitespace-nowrap">{u.marks_total}</td>
                     <td className="whitespace-nowrap">
                       {u.unit_doc ? (
-                        <a 
-                          href={u.unit_doc} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-blue-600 hover:underline"
-                        >
+                        <a href={u.unit_doc} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                           📄 View
                         </a>
                       ) : (
@@ -275,16 +279,10 @@ export default function UnitsPage() {
                     </td>
                     <td className="whitespace-nowrap sticky right-0 bg-white">
                       <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleEdit(u)} 
-                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
-                        >
+                        <button onClick={() => handleEdit(u)} className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">
                           Edit
                         </button>
-                        <button 
-                          onClick={() => handleDelete(u.unitid)} 
-                          className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition"
-                        >
+                        <button onClick={() => handleDelete(u.unitid)} className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition">
                           Delete
                         </button>
                       </div>
@@ -300,33 +298,19 @@ export default function UnitsPage() {
       {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto relative shadow-lg">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto relative shadow-lg">
 
-            {/* Close Button */}
-            <button 
-              onClick={closeModal} 
-              className="absolute top-3 right-3 text-xl text-gray-600 hover:text-black"
-            >
-              ✕
-            </button>
+            <button onClick={closeModal} className="absolute top-3 right-3 text-xl text-gray-600 hover:text-black z-10">✕</button>
 
-            {/* Header */}
             <div className="border-b px-6 py-4">
-              <h2 className="text-xl font-semibold text-gray-800">
-                {editingUnit ? 'Edit Unit' : 'Add Unit'}
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                {editingUnit 
-                  ? 'Update unit details below' 
-                  : 'Enter details to create a new unit'}
-              </p>
+              <h2 className="text-xl font-semibold text-gray-800">{editingUnit ? 'Edit Unit' : 'Add Unit'}</h2>
+              <p className="text-sm text-gray-500 mt-1">{editingUnit ? 'Update unit details below' : 'Enter details to create a new unit'}</p>
             </div>
 
-            {/* Body */}
             <div className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
 
-                {/* Language (First) - Optional for flexibility */}
+                {/* Language */}
                 <div>
                   <label className="form-label">Language</label>
                   <select
@@ -341,27 +325,19 @@ export default function UnitsPage() {
                   >
                     <option value="">All Languages</option>
                     {languages.map((l) => (
-                      <option key={l.langid} value={l.langid}>
-                        {l.lang_name}
-                      </option>
+                      <option key={l.langid} value={l.langid}>{l.lang_name}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Select language to filter exams, or leave blank to see all
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Select language to filter exams, or leave blank to see all</p>
                 </div>
 
-                {/* Exam (Second) */}
+                {/* Exam */}
                 <div>
                   <label className="form-label">Exam *</label>
                   <select
                     className="form-select bg-white text-black"
                     value={formData.examid || ''}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      examid: Number(e.target.value), 
-                      subjectid: undefined 
-                    })}
+                    onChange={(e) => setFormData({ ...formData, examid: Number(e.target.value), subjectid: undefined })}
                     required
                   >
                     <option value="">Select Exam</option>
@@ -371,14 +347,9 @@ export default function UnitsPage() {
                       </option>
                     ))}
                   </select>
-                  {filteredExams.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      No exams available
-                    </p>
-                  )}
                 </div>
 
-                {/* Subject (Third) */}
+                {/* Subject */}
                 <div>
                   <label className="form-label">Subject *</label>
                   <select
@@ -390,24 +361,13 @@ export default function UnitsPage() {
                   >
                     <option value="">Select Subject</option>
                     {filteredSubjects.map((s) => (
-                      <option key={s.subjectid} value={s.subjectid}>
-                        {s.subject}
-                      </option>
+                      <option key={s.subjectid} value={s.subjectid}>{s.subject}</option>
                     ))}
                   </select>
-                  {!formData.examid && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Please select an exam first
-                    </p>
-                  )}
-                  {formData.examid && filteredSubjects.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      No subjects found for this exam. Please create subjects first.
-                    </p>
-                  )}
+                  {!formData.examid && <p className="text-xs text-gray-500 mt-1">Please select an exam first</p>}
                 </div>
 
-                {/* Unit Name (Fourth) */}
+                {/* Unit Name */}
                 <div>
                   <label className="form-label">Unit Name *</label>
                   <input 
@@ -429,14 +389,13 @@ export default function UnitsPage() {
                   />
                 </div>
 
-                {/* Chapter Content */}
+                {/* Chapter Content - TinyMCE */}
                 <div>
                   <label className="form-label">Chapter Content</label>
-                  <textarea 
-                    className="form-textarea" 
-                    rows={3}
-                    value={formData.chapter}
-                    onChange={(e) => setFormData({ ...formData, chapter: e.target.value })}
+                  <Editor
+                    onInit={(evt, editor) => chapterEditorRef.current = editor}
+                    initialValue={formData.chapter}
+                    init={editorConfig}
                   />
                 </div>
 
@@ -455,29 +414,16 @@ export default function UnitsPage() {
                       />
                       <label
                         htmlFor="unit-file-upload"
-                        className={`px-4 py-2 bg-gray-100 text-gray-700 rounded cursor-pointer hover:bg-gray-200 transition ${
-                          uploading ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        className={`px-4 py-2 bg-gray-100 text-gray-700 rounded cursor-pointer hover:bg-gray-200 transition ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         {uploading ? '⏳ Uploading...' : '📁 Browse File'}
                       </label>
-                      {selectedFile && (
-                        <span className="text-sm text-gray-600">
-                          {selectedFile.name}
-                        </span>
-                      )}
+                      {selectedFile && <span className="text-sm text-gray-600">{selectedFile.name}</span>}
                     </div>
                     {formData.unit_doc && (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="text-green-600">✓ File uploaded:</span>
-                        <a 
-                          href={formData.unit_doc} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          View Document
-                        </a>
+                        <a href={formData.unit_doc} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View Document</a>
                         <button
                           type="button"
                           onClick={() => {
@@ -490,17 +436,11 @@ export default function UnitsPage() {
                         </button>
                       </div>
                     )}
-                    <p className="text-xs text-gray-500">
-                      Accepted formats: PDF, DOC, DOCX (Max 5MB)
-                    </p>
+                    <p className="text-xs text-gray-500">Accepted formats: PDF, DOC, DOCX (Max 5MB)</p>
                   </div>
                 </div>
 
-                <button 
-                  className="btn btn-primary w-full" 
-                  type="submit"
-                  disabled={uploading}
-                >
+                <button className="btn btn-primary w-full" type="submit" disabled={uploading}>
                   {uploading ? 'Please wait...' : editingUnit ? 'Update Unit' : 'Create Unit'}
                 </button>
               </form>

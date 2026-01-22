@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect, useState, FormEvent, ChangeEvent } from 'react';
+import { useEffect, useState, useRef, FormEvent, ChangeEvent } from 'react';
+import { Editor } from '@tinymce/tinymce-react';
 
 interface Lesson {
   lessonid: number;
   lesson: string;
+  langid: number;
+  examid: number;
+  subjectid: number;
 }
 
 interface Language {
@@ -12,19 +16,35 @@ interface Language {
   lang_name: string;
 }
 
+interface Exam {
+  examid: number;
+  exam: string;
+  langid: number;
+}
+
+interface Subject {
+  subjectid: number;
+  subject: string;
+  langid: number;
+  examid: number;
+}
+
 interface Topic {
   topicid: number;
   topic: string;
-  langid: number; // ✅ ADDED - This was missing
-  lessonid: number[];
-  topic_doc?: string[];
-  topic_audio?: string[];
-  topic_video?: string[];
+  langid: number;
+  examid: number;
+  subjectid: number;
+  lessonid: number;
 }
 
 interface QuestionRow {
   questid: number;
   question: string;
+  langid: number;
+  examid: number;
+  subjectid: number;
+  lessonid: number;
   topicid: number[];
   quest_doc?: string[];
   answer?: string;
@@ -36,12 +56,22 @@ export default function QuestionsPage() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<QuestionRow | null>(null);
   const [uploading, setUploading] = useState<string | null>(null); // 'quest_doc' | 'answer_doc'
 
+  const questionEditorRef = useRef<any>(null);
+  const answerEditorRef = useRef<any>(null);
+  const explainEditorRef = useRef<any>(null);
+
   const [formData, setFormData] = useState({
     langid: undefined as number | undefined,
+    examid: undefined as number | undefined,
+    subjectid: undefined as number | undefined,
+    lessonid: undefined as number | undefined,
     topicid: [] as number[],
     question: '',
     quest_doc: [] as string[],
@@ -51,21 +81,41 @@ export default function QuestionsPage() {
     euserid: 1,
   });
 
+  // TinyMCE Editor Configuration
+  const editorConfig = {
+    apiKey: '5lju5xslblj3hsz63j08txwlz7apyt02nr2z6l2nt5gghtw0',
+    height: 300,
+    menubar: false,
+    plugins: [
+      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+      'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+    ],
+    toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+  };
+
   useEffect(() => {
     loadAll();
   }, []);
 
   const loadAll = async () => {
     try {
-      const [q, t, l] = await Promise.all([
+      const [q, t, l, e, s, le] = await Promise.all([
         fetch('/api/questions').then(r => r.json()),
         fetch('/api/topics').then(r => r.json()),
         fetch('/api/language').then(r => r.json()),
+        fetch('/api/exams').then(r => r.json()),
+        fetch('/api/subjects').then(r => r.json()),
+        fetch('/api/lessons').then(r => r.json()),
       ]);
 
       if (q.success) setQuestions(q.data);
       if (t.success) setTopics(t.data);
       if (l.success) setLanguages(l.data);
+      if (e.success) setExams(e.data);
+      if (s.success) setSubjects(s.data);
+      if (le.success) setLessons(le.data);
     } catch (err) {
       console.error('Failed to load data:', err);
       alert('Failed loading data');
@@ -136,8 +186,24 @@ export default function QuestionsPage() {
       return;
     }
 
+    // Get content from TinyMCE editors
+    const questionContent = questionEditorRef.current?.getContent() || formData.question;
+    const answerContent = answerEditorRef.current?.getContent() || formData.answer;
+    const explainContent = explainEditorRef.current?.getContent() || formData.explain;
+
     const method = editing ? 'PUT' : 'POST';
-    const body = editing ? { ...formData, questid: editing.questid } : formData;
+    const body = editing ? { 
+      ...formData, 
+      question: questionContent,
+      answer: answerContent,
+      explain: explainContent,
+      questid: editing.questid 
+    } : { 
+      ...formData, 
+      question: questionContent,
+      answer: answerContent,
+      explain: explainContent 
+    };
 
     const r = await fetch('/api/questions', {
       method,
@@ -164,6 +230,9 @@ export default function QuestionsPage() {
   const reset = () => {
     setFormData({
       langid: undefined,
+      examid: undefined,
+      subjectid: undefined,
+      lessonid: undefined,
       topicid: [],
       question: '',
       quest_doc: [],
@@ -189,7 +258,10 @@ export default function QuestionsPage() {
   const handleEdit = (q: QuestionRow) => {
     setEditing(q);
     setFormData({
-      langid: undefined,
+      langid: q.langid,
+      examid: q.examid,
+      subjectid: q.subjectid,
+      lessonid: q.lessonid,
       topicid: Array.isArray(q.topicid) ? q.topicid : [],
       question: q.question || '',
       quest_doc: Array.isArray(q.quest_doc) ? q.quest_doc : [],
@@ -201,9 +273,21 @@ export default function QuestionsPage() {
     setShowModal(true);
   };
 
-  // ✅ FIXED: Filter topics by language - Now TypeScript knows langid exists
-  const filteredTopics = formData.langid
-    ? topics.filter(t => t.langid === formData.langid)
+  // Cascading filters
+  const filteredExams = formData.langid
+    ? exams.filter(e => e.langid === formData.langid)
+    : [];
+
+  const filteredSubjects = formData.langid && formData.examid
+    ? subjects.filter(s => s.langid === formData.langid && s.examid === formData.examid)
+    : [];
+
+  const filteredLessons = formData.langid && formData.examid && formData.subjectid
+    ? lessons.filter(l => l.langid === formData.langid && l.examid === formData.examid && l.subjectid === formData.subjectid)
+    : [];
+
+  const filteredTopics = formData.langid && formData.examid && formData.subjectid && formData.lessonid
+    ? topics.filter(t => t.langid === formData.langid && t.examid === formData.examid && t.subjectid === formData.subjectid && t.lessonid === formData.lessonid)
     : [];
 
   return (
@@ -227,6 +311,8 @@ export default function QuestionsPage() {
               <tr>
                 <th className="whitespace-nowrap">ID</th>
                 <th className="whitespace-nowrap">Question</th>
+                <th className="whitespace-nowrap">Subject</th>
+                <th className="whitespace-nowrap">Lesson</th>
                 <th className="whitespace-nowrap">Topics</th>
                 <th className="whitespace-nowrap">Files</th>
                 <th className="whitespace-nowrap sticky right-0 bg-white">Actions</th>
@@ -235,7 +321,7 @@ export default function QuestionsPage() {
             <tbody>
               {questions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-gray-500">
+                  <td colSpan={7} className="text-center py-8 text-gray-500">
                     No questions available
                   </td>
                 </tr>
@@ -245,6 +331,12 @@ export default function QuestionsPage() {
                     <td className="whitespace-nowrap">{q.questid}</td>
                     <td className="max-w-md">
                       <div className="truncate">{q.question}</div>
+                    </td>
+                    <td className="whitespace-nowrap">
+                      {q.subjectid || '—'}
+                    </td>
+                    <td className="whitespace-nowrap">
+                      {q.lessonid || '—'}
                     </td>
                     <td className="whitespace-nowrap">
                       <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
@@ -314,18 +406,94 @@ export default function QuestionsPage() {
             {/* Body */}
             <div className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Language */}
+                {/* Language (First) */}
                 <div>
                   <label className="form-label">Language *</label>
                   <select
                     className="form-select bg-white text-black"
                     value={formData.langid || ''}
                     required
-                    onChange={e => setFormData({ ...formData, langid: Number(e.target.value), topicid: [] })}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      langid: Number(e.target.value), 
+                      examid: undefined, 
+                      subjectid: undefined, 
+                      lessonid: undefined,
+                      topicid: [] 
+                    })}
                   >
                     <option value="">Select Language</option>
                     {languages.map(l => <option key={l.langid} value={l.langid}>{l.lang_name}</option>)}
                   </select>
+                </div>
+
+                {/* Exam (Second) */}
+                <div>
+                  <label className="form-label">Exam *</label>
+                  <select
+                    className="form-select bg-white text-black"
+                    value={formData.examid || ''}
+                    required
+                    disabled={!formData.langid}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      examid: Number(e.target.value), 
+                      subjectid: undefined, 
+                      lessonid: undefined,
+                      topicid: [] 
+                    })}
+                  >
+                    <option value="">Select Exam</option>
+                    {filteredExams.map(e => <option key={e.examid} value={e.examid}>{e.exam}</option>)}
+                  </select>
+                  {!formData.langid && (
+                    <p className="text-xs text-gray-500 mt-1">Please select a language first</p>
+                  )}
+                </div>
+
+                {/* Subject (Third) */}
+                <div>
+                  <label className="form-label">Subject *</label>
+                  <select
+                    className="form-select bg-white text-black"
+                    value={formData.subjectid || ''}
+                    required
+                    disabled={!formData.examid}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      subjectid: Number(e.target.value), 
+                      lessonid: undefined,
+                      topicid: [] 
+                    })}
+                  >
+                    <option value="">Select Subject</option>
+                    {filteredSubjects.map(s => <option key={s.subjectid} value={s.subjectid}>{s.subject}</option>)}
+                  </select>
+                  {!formData.examid && (
+                    <p className="text-xs text-gray-500 mt-1">Please select an exam first</p>
+                  )}
+                </div>
+
+                {/* Lesson (Fourth) */}
+                <div>
+                  <label className="form-label">Lesson *</label>
+                  <select
+                    className="form-select bg-white text-black"
+                    value={formData.lessonid || ''}
+                    required
+                    disabled={!formData.subjectid}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      lessonid: Number(e.target.value),
+                      topicid: [] 
+                    })}
+                  >
+                    <option value="">Select Lesson</option>
+                    {filteredLessons.map(l => <option key={l.lessonid} value={l.lessonid}>{l.lesson}</option>)}
+                  </select>
+                  {!formData.subjectid && (
+                    <p className="text-xs text-gray-500 mt-1">Please select a subject first</p>
+                  )}
                 </div>
 
                 {/* Topics Multi-Select */}
@@ -336,7 +504,7 @@ export default function QuestionsPage() {
                     required
                     className="form-select bg-white text-black h-40"
                     value={formData.topicid.map(String)}
-                    disabled={!formData.langid}
+                    disabled={!formData.lessonid}
                     onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                       setFormData({
                         ...formData,
@@ -348,8 +516,8 @@ export default function QuestionsPage() {
                       <option key={t.topicid} value={t.topicid}>{t.topic}</option>
                     ))}
                   </select>
-                  {!formData.langid && (
-                    <p className="text-xs text-gray-500 mt-1">Please select a language first</p>
+                  {!formData.lessonid && (
+                    <p className="text-xs text-gray-500 mt-1">Please select a lesson first</p>
                   )}
                   {formData.topicid.length > 0 && (
                     <p className="text-xs text-blue-600 mt-1">
@@ -358,15 +526,13 @@ export default function QuestionsPage() {
                   )}
                 </div>
 
-                {/* Question */}
+                {/* Question - TinyMCE Editor */}
                 <div>
                   <label className="form-label">Question *</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={4}
-                    required
-                    value={formData.question}
-                    onChange={e => setFormData({ ...formData, question: e.target.value })}
+                  <Editor
+                    onInit={(evt, editor) => questionEditorRef.current = editor}
+                    initialValue={formData.question || ''}
+                    init={editorConfig}
                   />
                 </div>
 
@@ -412,15 +578,13 @@ export default function QuestionsPage() {
                   </div>
                 </div>
 
-                {/* Answer */}
+                {/* Answer - TinyMCE Editor */}
                 <div>
                   <label className="form-label">Answer *</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={4}
-                    required
-                    value={formData.answer}
-                    onChange={e => setFormData({ ...formData, answer: e.target.value })}
+                  <Editor
+                    onInit={(evt, editor) => answerEditorRef.current = editor}
+                    initialValue={formData.answer || ''}
+                    init={editorConfig}
                   />
                 </div>
 
@@ -466,14 +630,13 @@ export default function QuestionsPage() {
                   </div>
                 </div>
 
-                {/* Explanation */}
+                {/* Explanation - TinyMCE Editor */}
                 <div>
                   <label className="form-label">Explanation</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={3}
-                    value={formData.explain}
-                    onChange={e => setFormData({ ...formData, explain: e.target.value })}
+                  <Editor
+                    onInit={(evt, editor) => explainEditorRef.current = editor}
+                    initialValue={formData.explain || ''}
+                    init={editorConfig}
                   />
                 </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, useRef, FormEvent } from 'react';
+import { Editor } from '@tinymce/tinymce-react';
 import { Lesson, Subject, Unit, Exam, Language } from '@/types/database';
 
 export default function LessonsPage() {
@@ -13,6 +14,8 @@ export default function LessonsPage() {
   const [show, setShow] = useState(false);
   const [edit, setEdit] = useState<Lesson | null>(null);
   const [uploading, setUploading] = useState<string | null>(null); // 'doc' | 'audio' | 'video'
+
+  const contentEditorRef = useRef<any>(null);
 
   const [form, setForm] = useState<Partial<Lesson>>({
     langid: undefined,
@@ -121,8 +124,19 @@ export default function LessonsPage() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    
+    // Get content from TinyMCE editor
+    const editorContent = contentEditorRef.current?.getContent() || '';
+    
     const method = edit ? "PUT" : "POST";
-    const body = edit ? { ...form, lessonid: edit.lessonid } : form;
+    const body = edit ? { 
+      ...form, 
+      content: editorContent,
+      lessonid: edit.lessonid 
+    } : { 
+      ...form, 
+      content: editorContent 
+    };
 
     const res = await fetch("/api/lessons", {
       method,
@@ -159,6 +173,19 @@ export default function LessonsPage() {
   const filteredUnits = form.subjectid
     ? units.filter(u => u.subjectid === form.subjectid)
     : [];
+
+ const editorConfig = {
+  apiKey: '5lju5xslblj3hsz63j08txwlz7apyt02nr2z6l2nt5gghtw0',
+  height: 300,
+  menubar: false,
+  plugins: [
+    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+    'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+  ],
+  toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+  content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+};
 
   if (loading) {
     return (
@@ -259,7 +286,11 @@ export default function LessonsPage() {
                       <div className="flex gap-2">
                         <button
                           className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
-                          onClick={() => { setEdit(l); setForm({ ...l }); setShow(true) }}
+                          onClick={() => { 
+                            setEdit(l); 
+                            setForm({ ...l }); 
+                            setShow(true) 
+                          }}
                         >
                           Edit
                         </button>
@@ -395,14 +426,13 @@ export default function LessonsPage() {
                   />
                 </div>
 
-                {/* Content */}
+                {/* Content - TinyMCE Editor */}
                 <div>
                   <label className="form-label">Content</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={3}
-                    value={form.content || ""}
-                    onChange={e => setForm({ ...form, content: e.target.value })}
+                  <Editor
+                    onInit={(evt, editor) => contentEditorRef.current = editor}
+                    initialValue={form.content || ''}
+                    init={editorConfig}
                   />
                 </div>
 

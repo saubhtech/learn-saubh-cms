@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, useRef, FormEvent } from 'react';
+import { Editor } from '@tinymce/tinymce-react';
 import { Exam, Subject, Lesson, Topic, Language } from '@/types/database';
 
 export default function TopicsPage() {
@@ -14,6 +15,8 @@ export default function TopicsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
   const [uploading, setUploading] = useState<string | null>(null); // 'doc' | 'audio' | 'video'
+
+  const explainEditorRef = useRef<any>(null);
 
   const [formData, setFormData] = useState<Partial<Topic>>({
     langid: undefined,
@@ -125,10 +128,20 @@ export default function TopicsPage() {
       return;
     }
 
+    // Get content from TinyMCE editor
+    const explainContent = explainEditorRef.current?.getContent() || '';
+
     const method = editingTopic ? 'PUT' : 'POST';
     const body = editingTopic
-      ? { ...formData, topicid: editingTopic.topicid }
-      : formData;
+      ? { 
+          ...formData, 
+          explain: explainContent,
+          topicid: editingTopic.topicid 
+        }
+      : { 
+          ...formData, 
+          explain: explainContent 
+        };
 
     const r = await fetch('/api/topics', {
       method,
@@ -198,6 +211,19 @@ export default function TopicsPage() {
   const filteredLessons = formData.subjectid
     ? lessons.filter(l => l.subjectid === formData.subjectid)
     : [];
+
+  const editorConfig = {
+  apiKey: '5lju5xslblj3hsz63j08txwlz7apyt02nr2z6l2nt5gghtw0',
+  height: 300,
+  menubar: false,
+  plugins: [
+    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+    'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+  ],
+  toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+  content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+};
 
   if (loading) {
     return (
@@ -399,14 +425,13 @@ export default function TopicsPage() {
                   />
                 </div>
 
-                {/* Explanation */}
+                {/* Explanation - TinyMCE Editor */}
                 <div>
                   <label className="form-label">Explanation</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={3}
-                    value={formData.explain || ''}
-                    onChange={e => setFormData({ ...formData, explain: e.target.value })}
+                  <Editor
+                    onInit={(evt, editor) => explainEditorRef.current = editor}
+                    initialValue={formData.explain || ''}
+                    init={editorConfig}
                   />
                 </div>
 
