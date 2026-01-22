@@ -393,7 +393,7 @@ export default function UnitsPage() {
                 <div>
                   <label className="form-label">Chapter Content</label>
                   <Editor
-                    onInit={(evt, editor) => chapterEditorRef.current = editor}
+                    onInit={(_evt:any, editor:any) => chapterEditorRef.current = editor}
                     initialValue={formData.chapter}
                     init={editorConfig}
                   />
