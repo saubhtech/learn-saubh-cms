@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Subject, Exam } from '@/types/database';
 
 interface Language {
@@ -17,6 +17,7 @@ export default function SubjectsPage() {
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const editorRef = useRef<any>(null);
 
   const [formData, setFormData] = useState<Partial<Subject>>({
     langid: undefined,
@@ -35,7 +36,72 @@ export default function SubjectsPage() {
 
   useEffect(() => {
     loadData();
+    loadTinyMCE();
   }, []);
+
+  const loadTinyMCE = () => {
+    const TINYMCE_API_KEY = '5lju5xslblj3hsz63j08txwlz7apyt02nr2z6l2nt5gghtw0';
+    
+    if (!document.querySelector('script[src*="tinymce"]')) {
+      const script = document.createElement('script');
+      script.src = `https://cdn.tiny.cloud/1/${TINYMCE_API_KEY}/tinymce/6/tinymce.min.js`;
+      script.referrerPolicy = 'origin';
+      document.head.appendChild(script);
+    }
+  };
+
+  useEffect(() => {
+    if (showModal && typeof window !== 'undefined') {
+      const checkAndInit = () => {
+        if ((window as any).tinymce) {
+          initTinyMCE();
+        } else {
+          setTimeout(checkAndInit, 100);
+        }
+      };
+      setTimeout(checkAndInit, 200);
+    }
+
+    return () => {
+      if ((window as any).tinymce) {
+        (window as any).tinymce.remove('#syllabus-editor');
+      }
+    };
+  }, [showModal, formData.syllabus]);
+
+  const initTinyMCE = () => {
+    if (!(window as any).tinymce) return;
+
+    (window as any).tinymce.remove('#syllabus-editor');
+
+    (window as any).tinymce.init({
+      selector: '#syllabus-editor',
+      height: 300,
+      menubar: false,
+      plugins: [
+        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
+        'searchreplace', 'visualblocks', 'code', 'fullscreen',
+        'insertdatetime', 'table', 'help', 'wordcount'
+      ],
+      toolbar: 'undo redo | formatselect | bold italic underline strikethrough | ' +
+        'alignleft aligncenter alignright alignjustify | ' +
+        'bullist numlist outdent indent | ' +
+        'forecolor backcolor | removeformat | code | help',
+      content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; }',
+      promotion: false,
+      branding: false,
+      setup: (editor: any) => {
+        editorRef.current = editor;
+        editor.on('init', () => {
+          editor.setContent(formData.syllabus || '');
+        });
+        editor.on('keyup change', () => {
+          const content = editor.getContent();
+          setFormData(prev => ({ ...prev, syllabus: content }));
+        });
+      }
+    });
+  };
 
   const loadData = async () => {
     try {
@@ -85,14 +151,12 @@ export default function SubjectsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type (PDF, DOC, DOCX)
     const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!allowedTypes.includes(file.type)) {
       alert('Only PDF, DOC, and DOCX files are allowed');
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('File size must be less than 5MB');
       return;
@@ -100,7 +164,6 @@ export default function SubjectsPage() {
 
     setSelectedFile(file);
     
-    // Upload file immediately
     setUploading(true);
     const formDataUpload = new FormData();
     formDataUpload.append('file', file);
@@ -131,6 +194,12 @@ export default function SubjectsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Get content from TinyMCE editor
+    if (editorRef.current) {
+      const content = editorRef.current.getContent();
+      formData.syllabus = content;
+    }
 
     const method = editingSubject ? 'PUT' : 'POST';
     const body = editingSubject
@@ -220,6 +289,7 @@ export default function SubjectsPage() {
                 <th className="whitespace-nowrap">Theory</th>
                 <th className="whitespace-nowrap">Practicum</th>
                 <th className="whitespace-nowrap">Pass</th>
+                <th className="whitespace-nowrap">Syllabus</th>
                 <th className="whitespace-nowrap">Document</th>
                 <th className="whitespace-nowrap sticky right-0 bg-white">Actions</th>
               </tr>
@@ -227,7 +297,7 @@ export default function SubjectsPage() {
             <tbody>
               {subjects.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-8 text-gray-500">
+                  <td colSpan={11} className="text-center py-8 text-gray-500">
                     No subjects
                   </td>
                 </tr>
@@ -242,6 +312,12 @@ export default function SubjectsPage() {
                     <td className="whitespace-nowrap">{s.marks_theory}</td>
                     <td className="whitespace-nowrap">{s.marks_practicum}</td>
                     <td className="whitespace-nowrap">{s.pass_total}</td>
+                    <td className="max-w-xs">
+                      <div 
+                        className="truncate text-sm" 
+                        dangerouslySetInnerHTML={{ __html: s.syllabus || "—" }}
+                      />
+                    </td>
                     <td className="whitespace-nowrap">
                       {s.subj_doc ? (
                         <a href={s.subj_doc} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
@@ -278,10 +354,21 @@ export default function SubjectsPage() {
       {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto relative shadow-lg">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto relative shadow-lg">
 
             {/* Close */}
-            <button className="absolute top-3 right-3 text-xl text-gray-600 hover:text-black" onClick={() => setShowModal(false)}>✕</button>
+            <button 
+              className="absolute top-3 right-3 text-xl text-gray-600 hover:text-black z-10" 
+              onClick={() => {
+                setShowModal(false);
+                if ((window as any).tinymce) {
+                  (window as any).tinymce.remove('#syllabus-editor');
+                  editorRef.current = null;
+                }
+              }}
+            >
+              ✕
+            </button>
 
             {/* Header */}
             <div className="border-b px-6 py-4">
@@ -300,7 +387,7 @@ export default function SubjectsPage() {
                   <label className="form-label">Language *</label>
                   <select 
                     className="form-select bg-white text-black" 
-                    value={formData.langid} 
+                    value={formData.langid || ''} 
                     onChange={e => setFormData({ ...formData, langid: Number(e.target.value) })} 
                     required
                   >
@@ -314,7 +401,7 @@ export default function SubjectsPage() {
                   <label className="form-label">Exam *</label>
                   <select 
                     className="form-select bg-white text-black" 
-                    value={formData.examid} 
+                    value={formData.examid || ''} 
                     onChange={e => setFormData({ ...formData, examid: Number(e.target.value) })} 
                     required
                   >
@@ -398,15 +485,19 @@ export default function SubjectsPage() {
                   </div>
                 </div>
 
-                {/* Syllabus */}
+                {/* Syllabus with TinyMCE */}
                 <div>
                   <label className="form-label">Syllabus</label>
-                  <textarea 
-                    className="form-textarea" 
-                    value={formData.syllabus} 
-                    onChange={e => setFormData({ ...formData, syllabus: e.target.value })} 
-                    rows={3} 
-                  />
+                  <div className="border border-gray-300 rounded-lg overflow-hidden">
+                    <textarea
+                      id="syllabus-editor"
+                      className="w-full p-3"
+                      rows={10}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Rich text editor with formatting support. You can paste content from Word/Google Docs.
+                  </p>
                 </div>
 
                 {/* Document Upload */}
@@ -437,13 +528,13 @@ export default function SubjectsPage() {
                       )}
                     </div>
                     {formData.subj_doc && (
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded">
                         <span className="text-green-600">✓ File uploaded:</span>
                         <a 
                           href={formData.subj_doc} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
+                          className="text-blue-600 hover:underline flex-1"
                         >
                           View Document
                         </a>
@@ -453,7 +544,7 @@ export default function SubjectsPage() {
                             setFormData({ ...formData, subj_doc: '' });
                             setSelectedFile(null);
                           }}
-                          className="text-red-600 hover:underline ml-2"
+                          className="text-red-600 hover:underline"
                         >
                           Remove
                         </button>
